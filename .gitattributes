@@ -1,0 +1,5 @@
+# the math publish files must stay byte-exact (Stake checks them; a CRLF checkout changes every LUT)
+math/publish_files/** -text
+*.webp binary
+*.ogg binary
+*.zst binary
