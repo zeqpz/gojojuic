@@ -1,0 +1,95 @@
+TBBmalloc: skip allocation functions replacement in ucrtbase.dll: unknown prologue for function _msize
+Blender 4.2.3 LTS (hash 0e22e4fcea03 built 2024-10-15 01:37:33)
+Fra:1 Mem:46.78M (Peak 46.78M) | Time:00:00.72 | Rendering 1 / 24 samples
+Fra:1 Mem:46.78M (Peak 46.78M) | Time:00:00.77 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_00.png'
+Time: 00:00.79 (Saving: 00:00.01)
+
+Fra:2 Mem:46.74M (Peak 46.74M) | Time:00:00.05 | Rendering 1 / 24 samples
+Fra:2 Mem:46.74M (Peak 46.74M) | Time:00:00.09 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_01.png'
+Time: 00:00.12 (Saving: 00:00.01)
+
+Fra:3 Mem:46.75M (Peak 46.75M) | Time:00:00.05 | Rendering 1 / 24 samples
+Fra:3 Mem:46.75M (Peak 46.75M) | Time:00:00.09 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_02.png'
+Time: 00:00.11 (Saving: 00:00.01)
+
+Fra:4 Mem:46.84M (Peak 46.84M) | Time:00:00.04 | Rendering 1 / 24 samples
+Fra:4 Mem:46.84M (Peak 46.84M) | Time:00:00.08 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_03.png'
+Time: 00:00.11 (Saving: 00:00.01)
+
+Fra:5 Mem:47.03M (Peak 47.03M) | Time:00:00.04 | Rendering 1 / 24 samples
+Fra:5 Mem:47.03M (Peak 47.03M) | Time:00:00.08 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_04.png'
+Time: 00:00.10 (Saving: 00:00.01)
+
+Fra:6 Mem:47.54M (Peak 47.54M) | Time:00:00.04 | Rendering 1 / 24 samples
+Fra:6 Mem:47.54M (Peak 47.54M) | Time:00:00.08 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_05.png'
+Time: 00:00.10 (Saving: 00:00.01)
+
+Fra:7 Mem:48.59M (Peak 48.59M) | Time:00:00.05 | Rendering 1 / 24 samples
+Fra:7 Mem:48.59M (Peak 48.59M) | Time:00:00.08 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_06.png'
+Time: 00:00.11 (Saving: 00:00.01)
+
+Fra:8 Mem:50.45M (Peak 50.45M) | Time:00:00.05 | Rendering 1 / 24 samples
+Fra:8 Mem:50.45M (Peak 50.45M) | Time:00:00.09 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_07.png'
+Time: 00:00.12 (Saving: 00:00.01)
+
+Fra:9 Mem:53.58M (Peak 55.90M) | Time:00:00.07 | Rendering 1 / 24 samples
+Fra:9 Mem:53.58M (Peak 55.90M) | Time:00:00.10 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_08.png'
+Time: 00:00.13 (Saving: 00:00.01)
+
+Fra:10 Mem:58.62M (Peak 62.49M) | Time:00:00.09 | Rendering 1 / 24 samples
+Fra:10 Mem:58.62M (Peak 62.49M) | Time:00:00.13 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_09.png'
+Time: 00:00.15 (Saving: 00:00.01)
+
+Fra:11 Mem:66.08M (Peak 72.13M) | Time:00:00.13 | Rendering 1 / 24 samples
+Fra:11 Mem:66.08M (Peak 72.13M) | Time:00:00.17 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_10.png'
+Time: 00:00.20 (Saving: 00:00.01)
+
+Fra:12 Mem:75.81M (Peak 85.23M) | Time:00:00.19 | Rendering 1 / 24 samples
+Fra:12 Mem:75.81M (Peak 85.23M) | Time:00:00.23 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_11.png'
+Time: 00:00.26 (Saving: 00:00.01)
+
+Fra:13 Mem:100.77M (Peak 118.01M) | Time:00:00.46 | Rendering 1 / 24 samples
+Fra:13 Mem:100.77M (Peak 118.01M) | Time:00:00.51 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_12.png'
+Time: 00:00.54 (Saving: 00:00.01)
+
+Fra:14 Mem:191.93M (Peak 237.99M) | Time:00:02.10 | Rendering 1 / 24 samples
+Fra:14 Mem:191.93M (Peak 237.99M) | Time:00:02.33 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_13.png'
+Time: 00:02.36 (Saving: 00:00.01)
+
+Fra:15 Mem:1715.40M (Peak 2241.00M) | Time:03:55.93 | Rendering 1 / 24 samples
+Fra:15 Mem:1715.40M (Peak 2241.00M) | Time:03:56.14 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_14.png'
+Time: 03:56.18 (Saving: 00:00.01)
+
+Fra:16 Mem:46.12M (Peak 46.12M) | Time:00:00.08 | Rendering 1 / 24 samples
+Fra:16 Mem:46.12M (Peak 46.12M) | Time:00:00.09 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_15.png'
+Time: 00:00.14 (Saving: 00:00.01)
+
+Fra:17 Mem:46.12M (Peak 46.12M) | Time:00:00.02 | Rendering 1 / 24 samples
+Fra:17 Mem:46.12M (Peak 46.12M) | Time:00:00.03 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_16.png'
+Time: 00:00.08 (Saving: 00:00.01)
+
+Fra:18 Mem:46.12M (Peak 46.12M) | Time:00:00.02 | Rendering 1 / 24 samples
+Fra:18 Mem:46.12M (Peak 46.12M) | Time:00:00.03 | Rendering 24 / 24 samples
+Saved: 'C:\Users\CooperHinkel\Documents\juicedojo\art\blender\splash\burst1_17.png'
+Time: 00:00.07 (Saving: 00:00.01)
+
+rendered burst 1
+
+Blender quit

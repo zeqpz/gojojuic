@@ -1,0 +1,188 @@
+{
+ "big_win": {
+  "files": [
+   "sfx/big_win_1.ogg",
+   "sfx/big_win_2.ogg"
+  ],
+  "vol": 0.9
+ },
+ "boom": {
+  "files": [
+   "sfx/boom_1.ogg",
+   "sfx/boom_2.ogg"
+  ],
+  "vol": 0.9
+ },
+ "bump": {
+  "files": [
+   "sfx/bump_1.ogg",
+   "sfx/bump_2.ogg",
+   "sfx/bump_3.ogg"
+  ],
+  "vol": 0.45
+ },
+ "coin_tick": {
+  "files": [
+   "sfx/coin_tick_1.ogg",
+   "sfx/coin_tick_2.ogg",
+   "sfx/coin_tick_3.ogg"
+  ],
+  "vol": 0.35
+ },
+ "combo": {
+  "files": [
+   "sfx/combo_1.ogg",
+   "sfx/combo_2.ogg",
+   "sfx/combo_3.ogg"
+  ],
+  "vol": 0.7
+ },
+ "drop": {
+  "files": [
+   "sfx/drop_1.ogg",
+   "sfx/drop_2.ogg"
+  ],
+  "vol": 0.5
+ },
+ "frenzy_start": {
+  "files": [
+   "sfx/frenzy_start_1.ogg",
+   "sfx/frenzy_start_2.ogg"
+  ],
+  "vol": 0.85
+ },
+ "frost": {
+  "files": [
+   "sfx/frost_1.ogg",
+   "sfx/frost_2.ogg"
+  ],
+  "vol": 0.65
+ },
+ "fuse": {
+  "files": [
+   "sfx/fuse_1.ogg",
+   "sfx/fuse_2.ogg"
+  ],
+  "vol": 0.55
+ },
+ "line_win": {
+  "files": [
+   "sfx/line_win_1.ogg",
+   "sfx/line_win_2.ogg",
+   "sfx/line_win_3.ogg"
+  ],
+  "vol": 0.6
+ },
+ "multiplier": {
+  "files": [
+   "sfx/multiplier_1.ogg",
+   "sfx/multiplier_2.ogg"
+  ],
+  "vol": 0.7
+ },
+ "slice_FRZ": {
+  "files": [
+   "sfx/slice_FRZ_1.ogg",
+   "sfx/slice_FRZ_2.ogg",
+   "sfx/slice_FRZ_3.ogg"
+  ],
+  "vol": 0.8
+ },
+ "slice_H1": {
+  "files": [
+   "sfx/slice_H1_1.ogg",
+   "sfx/slice_H1_2.ogg",
+   "sfx/slice_H1_3.ogg"
+  ],
+  "vol": 0.8
+ },
+ "slice_H2": {
+  "files": [
+   "sfx/slice_H2_1.ogg",
+   "sfx/slice_H2_2.ogg",
+   "sfx/slice_H2_3.ogg"
+  ],
+  "vol": 0.8
+ },
+ "slice_H3": {
+  "files": [
+   "sfx/slice_H3_1.ogg",
+   "sfx/slice_H3_2.ogg",
+   "sfx/slice_H3_3.ogg"
+  ],
+  "vol": 0.8
+ },
+ "slice_H4": {
+  "files": [
+   "sfx/slice_H4_1.ogg",
+   "sfx/slice_H4_2.ogg",
+   "sfx/slice_H4_3.ogg"
+  ],
+  "vol": 0.8
+ },
+ "slice_JM": {
+  "files": [
+   "sfx/slice_JM_1.ogg",
+   "sfx/slice_JM_2.ogg",
+   "sfx/slice_JM_3.ogg"
+  ],
+  "vol": 0.7
+ },
+ "slice_L1": {
+  "files": [
+   "sfx/slice_L1_1.ogg",
+   "sfx/slice_L1_2.ogg",
+   "sfx/slice_L1_3.ogg"
+  ],
+  "vol": 0.8
+ },
+ "slice_L2": {
+  "files": [
+   "sfx/slice_L2_1.ogg",
+   "sfx/slice_L2_2.ogg",
+   "sfx/slice_L2_3.ogg"
+  ],
+  "vol": 0.8
+ },
+ "slice_L3": {
+  "files": [
+   "sfx/slice_L3_1.ogg",
+   "sfx/slice_L3_2.ogg",
+   "sfx/slice_L3_3.ogg"
+  ],
+  "vol": 0.8
+ },
+ "slice_L4": {
+  "files": [
+   "sfx/slice_L4_1.ogg",
+   "sfx/slice_L4_2.ogg",
+   "sfx/slice_L4_3.ogg"
+  ],
+  "vol": 0.75
+ },
+ "slice_PW": {
+  "files": [
+   "sfx/slice_PW_1.ogg",
+   "sfx/slice_PW_2.ogg",
+   "sfx/slice_PW_3.ogg"
+  ],
+  "vol": 0.85
+ },
+ "slice_SC": {
+  "files": [
+   "sfx/slice_SC_1.ogg",
+   "sfx/slice_SC_2.ogg",
+   "sfx/slice_SC_3.ogg"
+  ],
+  "vol": 0.85
+ },
+ "swoosh": {
+  "files": [
+   "sfx/swoosh_1.ogg",
+   "sfx/swoosh_2.ogg",
+   "sfx/swoosh_3.ogg",
+   "sfx/swoosh_4.ogg"
+  ],
+  "vol": 0.5
+ }
+}

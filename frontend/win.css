@@ -1,0 +1,145 @@
+/* The win screen, identical in structure and motion to zeqpz/orleans' totalWinScreen: every rule for .totalwin and
+   the bar's drop-away (.bottom.away / .back), extracted from the live orleans page in cascade order (2026-11-13), plus
+   the spark rules from its source. Art swaps: the tier splash and the figure's backing are our juice-splash plaque.
+   Juice Dojo overrides at the end. */
+.totalwin { position: fixed; inset: 0px; z-index: 56; opacity: 0; cursor: pointer; user-select: none; transition: opacity 0.28s; }
+.totalwin::before { content: ""; position: absolute; inset: 0px; pointer-events: none; background: radial-gradient(ellipse 48vmax 34vmax at var(--cx, 50%) var(--cy, 50%), rgba(0,0,0,.66), rgba(0,0,0,0) 72%); }
+.totalwin.on { opacity: 1; }
+.totalwin .twin { position: absolute; left: var(--cx, 50%); top: var(--cy, 50%); translate: -50% -50%; display: flex; flex-direction: column; align-items: center; opacity: 0; transform: scale(0.82); transition: opacity 0.4s, transform 0.55s cubic-bezier(0.2, 1.25, 0.3, 1); }
+.totalwin.up .twin { opacity: 1; transform: none; }
+.totalwin .twhead { --lw: min(78vw, 70vh, 640px); position: absolute; z-index: 1; left: 50%; bottom: calc(100% - 3vh); translate: -50%; width: calc(var(--lw) * 1.125); aspect-ratio: 900 / 254; display: grid; place-items: center; }
+.totalwin .twhead.tier::before { content: ""; position: absolute; inset: 0px; z-index: -1; background: url("assets/win/plaque.webp") center center / 100% 100% no-repeat; translate: var(--px, 0) var(--py, 0); rotate: var(--pr, 0deg); scale: var(--ps, 1); animation: 0.5s steps(1) 0s infinite normal none running splashBoil, 3.2s ease-in-out 0s infinite normal none running splashHue; }
+.totalwin .twhead.tier::after, .totalwin .twamount::after { content: ""; position: absolute; inset: 0px; z-index: -1; pointer-events: none; background: linear-gradient(108deg, transparent 32%, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0.62) 46%, rgba(214, 160, 255, 0.38) 51%, transparent 60%) 0px 0px / 260% 100% no-repeat; mask: url("assets/win/plaque.webp") center center / 100% 100% no-repeat; mix-blend-mode: screen; translate: var(--px, 0) var(--py, 0); rotate: var(--pr, 0deg); scale: var(--ps, 1); animation: 2.6s cubic-bezier(0.45, 0, 0.55, 1) 0s infinite normal none running splashSheen, 0.5s steps(1) 0s infinite normal none running splashBoil; }
+.totalwin .twamount::after { mask-image: url("assets/win/plaque.webp"); animation-delay: -1.1s, 0s; }
+@media (prefers-reduced-motion: reduce) { .totalwin .twhead.tier::before, .totalwin .twhead.tier::after, .totalwin .twamount::before, .totalwin .twamount::after { animation: auto ease 0s 1 normal none running none !important; } }
+.totalwin .twlogo { grid-area: 1 / 1; visibility: hidden; display: block; width: var(--lw); height: auto; filter: drop-shadow(rgba(0, 0, 0, 0.75) 0px 10px 22px); translate: var(--tx, 0) var(--ty, 0); rotate: var(--tr, 0deg); scale: var(--ts, 1); }
+.totalwin .twlogo.on { visibility: visible; }
+.totalwin .iconrain { position: absolute; inset: 0px; display: block; width: 100%; height: 100%; pointer-events: none; transition: opacity 0.35s; }
+.totalwin .iconrain.done { opacity: 0; }
+.totalwin .twhead { scale: var(--hs, 1); transform-origin: 50% 70%; transition: scale 0.35s cubic-bezier(0.2, 1.3, 0.3, 1); }
+.totalwin .twhead.hit { animation: twslam calc(.56s + var(--lvl, 0) * .06s) cubic-bezier(.2, 1.15, .3, 1); }
+.totalwin .twhead.hit .twlogo.on { animation: twneon calc(.9s + var(--lvl, 0) * .12s) steps(1) both; }
+.totalwin .twhead.blank { visibility: hidden; }
+.totalwin.swap .twin { opacity: 0; transform: scale(0.9); }
+.totalwin .twhead .twlogo.on { filter: drop-shadow(0 10px 22px rgba(0,0,0,.75)) drop-shadow(0 0 14px rgba(var(--hglow, 124, 255, 107), .55)); }
+.totalwin .twsheen { grid-area: 1 / 1; width: var(--lw); height: 100%; z-index: 2; pointer-events: none; opacity: 0; mask: var(--art, none) center / 100% auto no-repeat; background: linear-gradient(105deg, transparent 44%, rgba(255, 255, 255, 0.75) 48.5%, rgb(255, 255, 255) 50%, rgba(255, 255, 255, 0.75) 51.5%, transparent 56%) 0px 0px / 300% 100% no-repeat; mix-blend-mode: overlay; translate: var(--tx, 0) var(--ty, 0); rotate: var(--tr, 0deg); scale: var(--ts, 1); }
+.totalwin .twhead.hit .twsheen { animation: 0.85s cubic-bezier(0.45, 0, 0.3, 1) 0.22s 1 normal both running twsweep; }
+.totalwin .twin.knock { animation: 0.42s linear 0s 1 normal none running twknock; }
+.totalwin .twflash { position: absolute; inset: 0px; pointer-events: none; opacity: 0; background: radial-gradient(ellipse 60vmax 42vmax at var(--cx, 50%) var(--cy, 50%), rgba(255, 255, 255, .95), rgba(255, 255, 255, 0) 70%); }
+.totalwin .twflash.go { animation: 0.55s ease-out 0s 1 normal none running twflash; }
+@media (prefers-reduced-motion: reduce) { .totalwin .twhead, .totalwin .twhead.hit, .totalwin .twhead.hit .twlogo.on, .totalwin .twhead.hit .twsheen, .totalwin .twin.knock, .totalwin .twflash.go { animation: auto ease 0s 1 normal none running none !important; transition: none !important; } }
+.totalwin .twamount { position: relative; padding: 4.5vh 7vw 5vh; filter: drop-shadow(rgba(0, 0, 0, 0.6) 0px 8px 18px); }
+.totalwin .twamount::before { content: ""; position: absolute; inset: 0px; z-index: -1; background: url("assets/win/plaque.webp") center center / 100% 100% no-repeat; translate: var(--px, 0) var(--py, 0); rotate: var(--pr, 0deg); scale: var(--ps, 1); animation: 0.5s steps(1) -0.25s infinite normal none running splashBoil, 3.6s ease-in-out -1.4s infinite normal none running splashHue; }
+.totalwin .twfig { display: flex; align-items: flex-end; justify-content: center; gap: 0.4vw; translate: var(--tx, 0) var(--ty, 0); rotate: var(--tr, 0deg); scale: var(--ts, 1); }
+.totalwin .twamount img { height: clamp(46px, 13vh, 132px); width: auto; display: block; }
+.totalwin .twamount .sym { font-family: var(--num); font-size: clamp(34px, 9.5vh, 96px); line-height: 1; color: rgb(255, 255, 255); align-self: center; text-shadow: rgb(0, 0, 0) 0px 3px 0px; -webkit-text-stroke: 5px rgb(0, 0, 0); paint-order: stroke; }
+.totalwin .twcont { position: absolute; left: 0px; right: 0px; bottom: 4vh; text-align: center; font-family: var(--disp); font-size: clamp(15px, 2.4vh, 22px); letter-spacing: 0.14em; text-transform: uppercase; color: rgb(255, 255, 255); text-shadow: rgba(0, 0, 0, 0.8) 0px 3px 0px; opacity: 0; transition: opacity 0.35s; animation: 1.5s ease-in-out 0s infinite normal none running bcont; }
+.totalwin.done .twcont { opacity: 1; transition-delay: 0.25s; }
+@media (prefers-reduced-motion: reduce) { .totalwin, .totalwin .twin, .totalwin .twcont { transition: none !important; animation: auto ease 0s 1 normal none running none !important; } }
+.bottom.away { animation: 0.55s ease 0s 1 normal forwards running hudDrop; pointer-events: none; }
+.bottom.back { animation: 0.7s ease 0s 1 normal both running hudPop; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .bottom.away, .bottom.back { animation: auto ease 0s 1 normal none running none; } }
+@keyframes bcont { 
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@keyframes splashSheen { 
+  0% { background-position: 130% 0px; }
+  70%, 100% { background-position: -40% 0px; }
+}
+@keyframes splashBoil { 
+  0% { transform: none; }
+  25% { transform: skew(0.5deg, -0.3deg) scale(1.006, 0.996); }
+  50% { transform: skew(-0.4deg, 0.25deg) scale(0.995, 1.007); }
+  75% { transform: skew(0.25deg, 0.4deg) scale(1.004, 1.002); }
+}
+@keyframes splashHue { 
+  0%, 100% { filter: hue-rotate(0deg) saturate(1) brightness(1); }
+  50% { filter: hue-rotate(-14deg) saturate(1.25) brightness(1.12); }
+}
+@keyframes twslam { 
+  0% { transform: scale(calc(2.1 + var(--lvl, 0) * .3)) rotate(-6deg); opacity: 0; filter: blur(8px) brightness(2.2); }
+  34% { transform: scale(0.9) rotate(1.6deg); opacity: 1; filter: blur(0px) brightness(1.7); }
+  58% { transform: scale(1.06) rotate(-0.8deg); filter: brightness(1.2); }
+  80% { transform: scale(0.985) rotate(0.3deg); filter: none; }
+  100% { transform: none; filter: none; }
+}
+@keyframes twneon { 
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  15% { opacity: 0.25; }
+  21% { opacity: 1; }
+  27% { opacity: 0.45; }
+  33%, 100% { opacity: 1; }
+}
+@keyframes twsweep { 
+  0% { opacity: 1; background-position: 115% 0px; }
+  90% { opacity: 1; }
+  100% { opacity: 0; background-position: -15% 0px; }
+}
+@keyframes twknock { 
+  0% { translate: -50% -50%; }
+  12% { translate: calc(-50% - 9px * var(--knock, 1)) calc(-50% + 6px * var(--knock, 1)); }
+  26% { translate: calc(-50% + 8px * var(--knock, 1)) calc(-50% - 5px * var(--knock, 1)); }
+  40% { translate: calc(-50% - 5px * var(--knock, 1)) calc(-50% + 3px * var(--knock, 1)); }
+  56% { translate: calc(-50% + 3px * var(--knock, 1)) calc(-50% - 2px * var(--knock, 1)); }
+  74% { translate: calc(-50% - 1px * var(--knock, 1)) -50%; }
+  100% { translate: -50% -50%; }
+}
+@keyframes twflash { 
+  0% { opacity: var(--flash, .3); }
+  100% { opacity: 0; }
+}
+@keyframes hudDrop { 
+  0% { translate: 0px; rotate: 0deg; animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
+  22% { translate: 0px -12px; rotate: 0deg; animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.35); }
+  100% { translate: 0 var(--hud-drop, 160px); rotate: -1.2deg; }
+}
+@keyframes hudPop { 
+  0% { translate: 0 var(--hud-drop, 160px); rotate: 1deg; animation-timing-function: cubic-bezier(0.15, 0.65, 0.3, 1); }
+  58% { translate: 0px -16px; rotate: -0.4deg; animation-timing-function: ease-in-out; }
+  78% { translate: 0px 6px; rotate: 0.15deg; animation-timing-function: ease-in-out; }
+  90% { translate: 0px -2px; rotate: 0deg; animation-timing-function: ease-in-out; }
+  100% { translate: 0px; rotate: 0deg; }
+}
+/* ---- sparks (orleans source) ---- */
+.sparks { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 5; }
+.sparks i {
+  position: absolute; left: 0; top: 0; width: calc(9px * var(--sz, 1)); height: calc(9px * var(--sz, 1));
+  margin: calc(-4.5px * var(--sz, 1)) 0 0 calc(-4.5px * var(--sz, 1)); border-radius: 50%;
+  background: currentColor; box-shadow: 0 0 6px currentColor, 0 0 0 1.5px rgba(11, 10, 13, .85);
+  animation: spark var(--dur, .9s) cubic-bezier(.15, .7, .35, 1) forwards;
+}
+.sparks i.streak {
+  width: calc(20px * var(--sz, 1)); height: calc(4px * var(--sz, 1));
+  margin: calc(-2px * var(--sz, 1)) 0 0 calc(-10px * var(--sz, 1)); border-radius: 3px; rotate: var(--rot, 0deg);
+}
+@keyframes spark {
+  0% { translate: 0 0; scale: .4; opacity: 1; } 12% { scale: 1.1; }
+  70% { opacity: 1; } 100% { translate: var(--dx) calc(var(--dy) + var(--fall)); scale: .3; opacity: 0; }
+}
+
+/* ---- Juice Dojo overrides ---- */
+/* the headline art is a wide wordmark: let its own proportions set the box */
+.totalwin .twhead { aspect-ratio: auto; height: calc(var(--lw) * .36); }
+.totalwin .twlogo { width: var(--lw); max-height: 100%; object-fit: contain; }
+/* the tier splash under the headline: the plaque, tinted per tier */
+.totalwin .twhead.tier::before { inset: 4% -4%; filter: hue-rotate(calc(var(--lvl, 0) * -38deg)) saturate(1.1); }
+/* the figure in juicy numerals; a currency mark the glyphs don't have is set in a chunky white face */
+.totalwin .twamount img { height: clamp(52px, 14vh, 150px); }
+.totalwin .twamount .sym { font-family: "Fredoka", sans-serif; font-weight: 700; color: #fff; -webkit-text-stroke: 6px #2a0e04; paint-order: stroke fill; text-shadow: 0 5px 0 #4a1a06; }
+.totalwin .twfig img[alt="."], .totalwin .twfig img[alt=","] { margin: 0 -.4vw; }
+.totalwin .twcont { font-family: "Fredoka", sans-serif; font-weight: 700; }
+.totalwin .iconrain { z-index: 0; }
+.totalwin .twin { z-index: 1; }
+/* the figure stands on a torn parchment sheet (Fruit Ninja's results-card feel, our own art) */
+.totalwin .twamount::before { background-image: url("assets/win/paper.webp"); inset: -6% -5%; animation: none; filter: drop-shadow(0 10px 16px rgba(0, 0, 0, .45)); }
+.totalwin .twamount::after { mask-image: url("assets/win/paper.webp"); -webkit-mask-image: url("assets/win/paper.webp"); opacity: .55; }
+.totalwin .twamount { padding: 5.5vh 8vw 6vh; }
+.totalwin .twamount .sym { color: #ffb21f; -webkit-text-stroke: 6px #5a1f06; text-shadow: 0 4px 0 #3a1404; }
+
+/* the headline stands clear above the paper, centred, on nothing but its own glow (no splash under it) */
+.totalwin .twhead { --lw: min(74vw, 54vh, 560px); bottom: calc(100% - 1.2vh); height: calc(var(--lw) * .5); }
+.totalwin .twhead.tier::before, .totalwin .twhead.tier::after { display: none; }
+.totalwin .twlogo { height: 100%; width: auto; max-width: var(--lw); justify-self: center; }
+.totalwin .twsheen { justify-self: center; }

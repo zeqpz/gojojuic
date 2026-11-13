@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Juice Dojo</title>
+<link rel="stylesheet" href="hud.css">
+<link rel="stylesheet" href="bonus.css">
+<link rel="stylesheet" href="win.css">
+<style>
+  @font-face { font-family: "Fredoka"; src: url("assets/fredoka.ttf") format("truetype"); font-weight: 300 700; font-display: block; }
+  :root {
+    --ink: #f6f1e8; --ink-soft: #c9bda9; --gold: #ffcf3a; --juice: #ff4d5e; --leaf: #7fd61f;
+    --disp: "Fredoka", "Segoe UI", Roboto, Arial, sans-serif;
+    --read: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --fs-green: #F2B230;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #120c0a; color: var(--ink); font-family: var(--disp); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  button { font-family: inherit; }
+
+  /* ---------- the dojo ---------- */
+  #bg { position: fixed; inset: 0; background: #1b120d url("assets/bg.webp") center / cover no-repeat; }
+  #bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 42%, transparent 35%, rgba(10, 5, 3, .55) 100%); transition: background .8s; }
+  body.frenzy #bg::after { background: radial-gradient(ellipse at 50% 42%, rgba(255, 140, 20, .12) 20%, rgba(70, 10, 0, .6) 100%); }
+  canvas.layer { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  #stain { z-index: 1; }
+  #board { display: none; }
+  #fx { z-index: 3; }
+  #flash { position: fixed; inset: 0; z-index: 30; pointer-events: none; background: #fff; opacity: 0; }
+  #frost { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .5s;
+           background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(170, 225, 255, .55) 100%); box-shadow: inset 0 0 80px rgba(200, 240, 255, .8); }
+
+  @keyframes bump { 30% { scale: 1.5; filter: brightness(1.8); } }
+  /* the in-bonus counter rides just over the HUD, inside #app so it scales with it (orleans: .rail in .main) */
+  /* the frenzy counter painted on the wall: white lettering and white juicy numerals, no plate */
+  #fsCard.wallfs { position: fixed; inset: 0; z-index: 2; pointer-events: none; display: block; opacity: 0; transition: opacity .5s; animation: none; }
+  #fsCard.wallfs.on { opacity: .94; }
+  #fsCard.wallfs.leaving { opacity: 0; }
+  .wcol { position: absolute; top: var(--wtop, 30%); width: var(--wcw, 240px); display: flex; flex-direction: column; align-items: center; gap: .6vh;
+          filter: drop-shadow(0 3px 0 rgba(30, 14, 4, .55)) drop-shadow(0 0 10px rgba(0, 0, 0, .25)); }
+  .wcol.left { left: var(--wl, 2vw); } .wcol.right { left: var(--wr, 80vw); }
+  .wlbl { width: 82%; height: auto; display: block; }
+  .wlbl.small { width: 92%; margin-top: 2.2vh; }
+  .wnum { display: flex; align-items: flex-end; justify-content: center; gap: .2vw; min-height: 1em; }
+  .wnum { gap: 0; }
+  .wnum img { height: clamp(48px, 11vh, 110px); width: auto; display: block; }
+  .wnum img + img { margin-left: calc(-1 * clamp(5px, 1.3vh, 13px)); }   /* the glyphs' padding and drips: tuck them together */
+  .wnum.small img { height: clamp(32px, 7vh, 70px); }
+  .wnum .sym { font-family: "Fredoka", sans-serif; font-weight: 700; font-size: clamp(30px, 7vh, 70px); line-height: 1; color: #f2ede6; -webkit-text-stroke: 5px #2a160a; paint-order: stroke fill; margin: 0 .1em; }
+  .wnum.bump { animation: bump .45s cubic-bezier(.2, .9, .3, 1.4); }
+  #fsBomb.hot { filter: drop-shadow(0 0 12px rgba(255, 50, 30, .9)) sepia(.5) saturate(4) hue-rotate(-30deg); }
+  #fsBomb.cool { filter: drop-shadow(0 0 12px rgba(160, 230, 255, .9)); }
+
+  /* ---------- banners ---------- */
+  .banner { position: fixed; z-index: 20; left: 50%; top: 42%; translate: -50% -50%; text-align: center; pointer-events: none; opacity: 0; }
+  .banner.show { animation: bannerIn .5s cubic-bezier(.2, .9, .3, 1.3) forwards; }
+  .banner.hide { animation: bannerOut .35s ease-in forwards; }
+  @keyframes bannerIn { 0% { opacity: 0; scale: .4; } 100% { opacity: 1; scale: 1; } }
+  @keyframes bannerOut { 0% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.3; } }
+  .banner .t1 { font-weight: 700; font-size: clamp(38px, 8vw, 104px); line-height: .95; letter-spacing: .02em; text-transform: uppercase;
+                color: #fff; -webkit-text-stroke: 3px #2a0e04; paint-order: stroke fill;
+                background: linear-gradient(#fff6c8, #ffc21f 45%, #ff6a12); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+                filter: drop-shadow(0 6px 0 #4a1a06) drop-shadow(0 0 22px rgba(255, 140, 20, .55)); }
+  .banner .t2 { margin-top: 10px; font-weight: 700; font-size: clamp(20px, 3.4vw, 40px); color: #fff; text-shadow: 0 3px 0 #000, 0 0 14px rgba(0, 0, 0, .6); font-variant-numeric: tabular-nums; }
+  .banner .t1 .bimg { display: block; height: clamp(110px, 26vh, 260px); width: auto; margin: 0 auto; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .55)); -webkit-text-fill-color: initial; }
+  .banner.bomb .t1:has(.bimg) { background: none; -webkit-text-stroke: 0; filter: none; }
+  .banner.bomb .t1 { background: linear-gradient(#fff, #ffb3a6 40%, #ff2b2b); -webkit-background-clip: text; background-clip: text; }
+
+
+  /* ---------- layout ---------- */
+  /* #app holds only the HUD. fitHud() (hud.js) sizes and scales it exactly as orleans scales its page:
+     width W / --fit, transform scale(--fit) from the bottom-left corner, the bar raised by --hs. */
+  #app { position: fixed; left: 0; bottom: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; transform-origin: 0 100%; pointer-events: none; }
+  #app > * { pointer-events: auto; }
+
+  /* ---------- panels (rules, bonus shop, replay, error) in the HUD's paint ---------- */
+  .infowrap { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 16px;
+              background: rgba(8, 6, 10, .45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .infowrap[hidden] { display: none; }
+  .infopanel, .shop {
+    position: relative; width: min(780px, 100%); max-height: 86vh; overflow: auto; padding: 22px 26px;
+    background: rgba(28, 24, 26, .92); border: 3px solid #000; border-radius: 22px; box-shadow: 0 14px 40px rgba(0, 0, 0, .6);
+    color: var(--ink); font-family: var(--read); animation: infoRise .3s cubic-bezier(.2, .9, .3, 1.1);
+  }
+  @keyframes infoRise { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+  .infopanel h3, .shop h3 { margin: 0 0 14px; font-family: var(--disp); font-weight: 700; font-size: 24px; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+  .infopanel h4 { font-family: var(--disp); font-weight: 700; font-size: 17px; letter-spacing: .08em; text-transform: uppercase; color: #ffb066; margin: 18px 0 8px; }
+  .infopanel p, .infopanel li { font-size: 14px; line-height: 1.6; margin: 0 0 10px; }
+  .infopanel .fine, .infopanel p.legal { font-size: 11.5px; color: var(--ink-soft); }
+  .infopanel table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .infopanel td, .infopanel th { padding: 5px 8px; border-bottom: 1px solid rgba(255, 255, 255, .08); text-align: left; }
+  .paytable { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .paytable .pt { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 12px; background: rgba(255, 255, 255, .05); font-family: var(--disp); }
+  .paytable canvas { width: 56px; height: 56px; flex: none; }
+  .paytable .pv { font-size: 13px; line-height: 1.5; } .paytable .pv b { color: var(--gold); }
+  .linesvg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .linesvg svg { width: 52px; height: 52px; background: rgba(255, 255, 255, .05); border-radius: 8px; }
+  .infoclose, .shopbtn {
+    display: inline-block; margin-top: 8px; padding: 12px 26px; cursor: pointer; border: 3px solid #000; border-radius: 14px;
+    font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: .1em; text-transform: uppercase; color: #15131a; background: var(--hud-on);
+  }
+  .infoclose:hover, .shopbtn:hover:not(:disabled) { filter: brightness(1.08); }
+  .shopbtn:disabled { opacity: .45; cursor: default; }
+  .shop { width: min(560px, 100%); text-align: center; font-family: var(--disp); }
+  .shopx { position: absolute; right: 14px; top: 12px; width: 36px; height: 36px; border: 2px solid #000; border-radius: 10px; background: rgba(255, 255, 255, .08); color: #fff; font-size: 20px; cursor: pointer; }
+  .card { margin: 6px 0 16px; padding: 18px; border-radius: 18px; border: 3px solid #000; background: linear-gradient(160deg, rgba(255, 170, 40, .22), rgba(255, 60, 40, .12)); }
+  .card canvas { width: 120px; height: 120px; }
+  .card .name { font-weight: 700; font-size: 26px; letter-spacing: .06em; color: var(--gold); text-transform: uppercase; }
+  .card .what { font-family: var(--read); font-size: 14px; line-height: 1.55; color: var(--ink); margin: 8px 0 12px; }
+  .card .price { font-weight: 700; font-size: 32px; color: #fff; }
+  .card .cost { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--hud-soft); }
+  .shopbar { display: flex; justify-content: center; gap: 22px; align-items: center; font-size: 15px; }
+  .shopbar .val { font-weight: 700; font-size: 20px; }
+  .shopbar button { width: 38px; height: 38px; border: 2px solid #000; border-radius: 10px; background: rgba(255, 255, 255, .08); color: #fff; font-size: 22px; cursor: pointer; }
+  .notice { position: fixed; z-index: 45; left: 50%; top: 18px; translate: -50% 0; padding: 10px 18px; border-radius: 12px; background: rgba(0, 0, 0, .8); border: 2px solid #000;
+            font-size: 14px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .notice.on { opacity: 1; }
+  .winpop { position: fixed; z-index: 21; pointer-events: none; font-weight: 700; color: #fff; -webkit-text-stroke: 2px #000; paint-order: stroke fill; }
+
+  /* ---------- loading ---------- */
+  .intro { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.5vh;
+           background: radial-gradient(ellipse at 50% 40%, #3a1d10, #0d0705 75%); transition: opacity .5s; padding: 4vh 6vw; }
+  .intro.gone { opacity: 0; pointer-events: none; }
+  .intro img { width: min(70vw, 560px); filter: drop-shadow(0 10px 20px rgba(0, 0, 0, .6)); }
+  .introbar { width: min(60vw, 420px); height: 10px; border-radius: 99px; background: rgba(255, 255, 255, .1); border: 2px solid #000; overflow: hidden; }
+  .introfill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffcf3a, #ff6a12); transition: width .2s; }
+  .intromsg { max-width: 760px; font-family: var(--read); font-size: 11px; line-height: 1.5; color: rgba(255, 255, 255, .55); text-align: center; }
+  .introplay { display: none; padding: 14px 40px; border: 3px solid #000; border-radius: 16px; font-weight: 700; font-size: 20px; letter-spacing: .12em; text-transform: uppercase;
+               background: linear-gradient(#ffe27a, #ffb21f 55%, #ff7a12); color: #2a1204; cursor: pointer; box-shadow: 0 6px 0 #7a3306; }
+  .intro.ready .introplay { display: block; }
+  .intro.ready .introbar { display: none; }
+  body.replay .betstep, body.replay .spinwrap, body.replay #bonusBtn, body.replay #autoBtn { visibility: hidden; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<canvas id="stain" class="layer"></canvas>
+<div id="board" aria-hidden="true"></div>
+<!-- the frenzy multiplier, painted on the wall in white beside the board (no plate): under the fruit -->
+<div id="fsCard" class="wallfs" aria-live="polite">
+  <div class="wcol right">
+    <img class="wlbl" src="assets/bonus/ww_multi.webp" alt="Multi" draggable="false">
+    <div class="wnum" id="fsMult"></div>
+  </div>
+</div>
+<canvas id="fx" class="layer"></canvas>
+<div id="frost"></div>
+<div id="flash"></div>
+
+</div>
+
+<div class="banner" id="banner"><div class="t1" id="bannerBig"></div><div class="t2" id="bannerSub"></div></div>
+
+<div id="app">
+<div class="bottom">
+  <!-- The HUD (v3, 2026-11-03), as the owner's reference: one silhouette - the bar with its
+       pointed left end and the spin hexagon over its right end - with menu and sound stacked on
+       the left and Rapid and Auto stacked on the right. The shapes are vector, drawn by
+       buildHud(); the Bonus button sits apart in the corner. -->
+  <div class="hud">
+    <button class="buy bonusbtn" id="bonusBtn"><i class="bglow" aria-hidden="true"></i><canvas class="bfx" aria-hidden="true"></canvas><i class="bshine" aria-hidden="true"></i>Bonus</button>
+    <div class="hudframe" style="--hud-fw: 1030.39; --hud-fh: 136;">
+      <svg class="hudshape" aria-hidden="true" focusable="false" viewBox="0 0 1030.39 136"><path d="M85.81 76A16 16 0 0 1 85.81 60L107.18 23A10 10 0 0 1 115.84 18L824.31 18A10 10 0 0 0 832.95 13.02L834.73 9.97A12 12 0 0 1 845.1 4L905.27 4A12 12 0 0 1 915.66 9.99L945.15 60.99A14 14 0 0 1 945.15 75.01L915.66 126.01A12 12 0 0 1 905.27 132L845.1 132A12 12 0 0 1 834.73 126.03L832.95 122.98A10 10 0 0 0 824.31 118L115.84 118A10 10 0 0 1 107.18 113Z"></path></svg>
+      <button class="hudbtn menu" id="menuBtn" aria-label="Game information" style="left: 0.3882%; top: 2.9412%; width: 10.4056%; height: 44.8529%;"><svg class="tabshape" aria-hidden="true" focusable="false" viewBox="4 4 107.22 61"><path d="M36.33 9A10 10 0 0 1 44.99 4L93.9 4A10 10 0 0 1 102.56 19L78.89 60A10 10 0 0 1 70.23 65L21.32 65A10 10 0 0 1 12.66 50Z"></path></svg>Info</button>
+      <button class="hudbtn audio" id="audioBtn" aria-label="Sound and music volume" aria-expanded="false" style="left: 0.3882%; top: 52.2059%; width: 10.4056%; height: 44.8529%;"><svg class="tabshape" aria-hidden="true" focusable="false" viewBox="4 71 107.22 61"><path d="M12.66 86A10 10 0 0 1 21.32 71L70.23 71A10 10 0 0 1 78.89 76L102.56 117A10 10 0 0 1 93.9 132L44.99 132A10 10 0 0 1 36.33 127Z"></path></svg>Audio</button>
+      <div class="hudbar" style="left: 10.8758%; top: 13.2353%; width: 65.5219%; height: 73.5294%;">
+        <div class="hudstat stat"><span class="lbl" id="balanceLbl">Balance<span class="cur">USD</span></span><span class="val long" id="balance">$1,000,000.00</span></div>
+        <div class="hudstat stat win zero" id="winStat"><span class="lbl">Win</span><span class="val" id="roundWin">$0.00</span></div>
+        <div class="chip stat juris" id="jurisBox" hidden=""><span class="val" id="jurisVal"></span></div>
+        <div class="hudbet">
+          <div class="hudstat stat bet"><span class="lbl">Bet</span><span class="val" id="betVal">$1.00</span></div>
+          <div class="betstep">
+            <button id="betUp" aria-label="Raise bet">+</button>
+            <button id="betDown" aria-label="Lower bet">−</button>
+          </div>
+        </div>
+      </div>
+      <span class="spinwrap" style="left: 77.7564%; top: 2.9412%; width: 14.3635%; height: 94.1176%;"><button class="spin spinbtn" id="spinBtn">Spin</button></span>
+      <button class="sidebtn rapid" id="rapidBtn" type="button" aria-pressed="false" aria-label="Rapid spins" title="Rapid spins" style="left: 89.2062%; top: 2.9412%; width: 10.4056%; height: 44.8529%;"><svg class="tabshape" aria-hidden="true" focusable="false" viewBox="919.17 4 107.22 61"><path d="M927.83 19A10 10 0 0 1 936.49 4L985.4 4A10 10 0 0 1 994.06 9L1017.73 50A10 10 0 0 1 1009.07 65L960.17 65A10 10 0 0 1 951.51 60Z"></path></svg>Rapid</button>
+      <button class="sidebtn auto" id="autoBtn" aria-label="Auto play" title="Auto play" style="left: 89.2062%; top: 52.2059%; width: 10.4056%; height: 44.8529%;"><svg class="tabshape" aria-hidden="true" focusable="false" viewBox="919.17 71 107.22 61"><path d="M951.51 76A10 10 0 0 1 960.17 71L1009.07 71A10 10 0 0 1 1017.73 86L994.06 127A10 10 0 0 1 985.4 132L936.49 132A10 10 0 0 1 927.83 117Z"></path></svg><span id="autoN" hidden=""></span></button>
+    </div>
+  </div>
+
+  <!-- The pop-ups hang off the bar itself (placed from JS over the tab that opens them), so they
+       read as part of the HUD: the auto play picker over Auto, the volume panel over the speaker. -->
+  <div class="popover hudpop" id="autoPop" hidden="" role="dialog" aria-label="Auto play">
+    <div class="poptitle">Auto play</div>
+    <div class="popsub" id="autoText">Rounds at <b id="autoBet"></b>. Stops early if the balance can't cover the next round, or when you press the button again.</div>
+    <div class="autoopts" id="autoOpts">
+      <button type="button" data-n="10" class="on" aria-pressed="true"><b>10</b><small>rounds</small></button>
+      <button type="button" data-n="25" aria-pressed="false"><b>25</b><small>rounds</small></button>
+      <button type="button" data-n="50" aria-pressed="false"><b>50</b><small>rounds</small></button>
+      <button type="button" data-n="100" aria-pressed="false"><b>100</b><small>rounds</small></button>
+    </div>
+    <button class="wordbtn" id="autoYes">Start</button>
+  </div>
+  <div class="vpop hudpop" id="volPop" hidden="" role="group" aria-label="Volume">
+    <div class="vrow">
+      <span class="vlbl">Sound</span>
+      <div class="vbar" id="sfxBar" role="slider" tabindex="0" aria-label="Sound effects volume" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80" aria-valuetext="80%" style="--v: 80%;"><i class="vwell"><i class="vfill"></i></i><i class="vknob"></i></div>
+      <span class="vnum" id="sfxNum" aria-hidden="true">80</span>
+    </div>
+    <div class="vrow">
+      <span class="vlbl">Music</span>
+      <div class="vbar" id="musicBar" role="slider" tabindex="0" aria-label="Music volume" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70" aria-valuetext="70%" style="--v: 70%;"><i class="vwell"><i class="vfill"></i></i><i class="vknob"></i></div>
+      <span class="vnum" id="musicNum" aria-hidden="true">70</span>
+    </div>
+  </div>
+
+  <!-- Rapid is a button now, but half the timing code still reads this checkbox, so it stays
+       as the single source of truth and the button drives it. -->
+  <input type="checkbox" id="turbo" hidden="">
+</div>
+</div>
+
+<div class="infowrap" id="bonusWrap" hidden>
+  <div class="bonuspop">
+    <div class="bshop" role="dialog" aria-modal="true" aria-label="Bonus buy">
+      <button type="button" class="bshopx" id="bonusClose" aria-label="Close"></button>
+      <h3 class="bshoptitle" id="bonusTitle">Bonus Buy</h3>
+      <div class="bshoprow" id="bshopRow"></div>
+      <div class="bshopbar">
+        <div class="bsstat"><span class="lbl">Balance</span><span class="val" id="bshopBal">0.00</span></div>
+        <i class="bssep" aria-hidden="true"></i>
+        <div class="bsstat bsplay">
+          <span class="lbl" id="bshopPlayLbl">Play</span>
+          <div class="bsbet">
+            <button type="button" id="bonusBetDown" aria-label="Lower bet"></button>
+            <span class="val" id="bonusBetVal">1.00</span>
+            <button type="button" id="bonusBetUp" aria-label="Raise bet"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="infowrap" id="infoWrap" hidden>
+  <div class="infopanel" role="dialog" aria-modal="true" aria-label="Game information">
+    <h3>Game Information</h3>
+    <div id="rulesBody"></div>
+    <button class="infoclose" id="infoClose">Close</button>
+  </div>
+</div>
+<div class="infowrap" id="replayWrap" hidden>
+  <div class="infopanel" role="dialog" aria-modal="true" aria-label="Round replay" style="text-align:center">
+    <h3>Round replay</h3>
+    <p id="replayMeta"></p><p id="replayResult" hidden></p><p class="fine" id="replayStatus">Loading the round…</p>
+    <button class="infoclose" id="replayPlay" hidden>Play</button>
+  </div>
+</div>
+<div class="infowrap" id="errorWrap" hidden>
+  <div class="infopanel" role="alertdialog" aria-modal="true" style="text-align:center">
+    <h3 id="errorTitle">Can't connect</h3><p id="errorMsg"></p>
+    <button class="infoclose" id="errorRetry" type="button">Reload</button>
+  </div>
+</div>
+<div class="notice" id="notice" role="status" aria-live="polite"></div>
+
+<div class="intro" id="intro">
+  <img src="assets/logo.webp" alt="Juice Dojo" draggable="false">
+  <div class="introbar"><i class="introfill" id="introFill"></i></div>
+  <button class="introplay" id="introPlay">Play</button>
+  <p class="intromsg">Malfunction voids all wins and plays. A consistent internet connection is required. In the event of a
+  disconnection, reload the game to finish any uncompleted rounds. The expected return is calculated over many plays. The
+  game display is not representative of any physical device and is for illustrative purposes only. Winnings are settled
+  according to the amount received from the Remote Game Server and not from events within the web browser.
+  TM and &copy; 2026 Engine.</p>
+</div>
+
+<script src="rgs.js"></script>
+<script src="hud.js"></script>
+<script src="rules.js"></script>
+<script src="game.js"></script>
+<script src="winscreen.js"></script>
+</body>
+</html>

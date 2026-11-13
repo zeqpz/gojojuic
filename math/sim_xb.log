@@ -1,0 +1,3 @@
+[extremebonus] 60000 books  RTP 0.9396  hit 0.959  max 5000x  mean 258.393x  -> weighted RTP 0.96700  largest book 27.5 KiB
+[boost] 300000 books  RTP 0.9585  hit 0.319  max 1807x  mean 1.198x  -> weighted RTP 0.96700  largest book 26.8 KiB
+SIMDONE

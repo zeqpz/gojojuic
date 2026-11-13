@@ -1,0 +1,12 @@
+{
+ "burst1": {
+  "cell": 192,
+  "cols": 6,
+  "frames": 18
+ },
+ "boom": {
+  "cell": 256,
+  "cols": 6,
+  "frames": 22
+ }
+}

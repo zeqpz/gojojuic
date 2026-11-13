@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+math/mock_cache/
+art/raw/
+art/blender/frames/
+art/blender/splash/
+art/blender/explosion/
