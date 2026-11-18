@@ -75,6 +75,8 @@
 .bonusbtn::after, .bonusbtn .bshine { display: none; }
 .bonusbtn .bword { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none;
   font-size: calc(50px * var(--hs, 1)); animation: bpulse 2.4s ease-in-out infinite; }
-.bonusbtn:disabled .bword { animation: none; filter: grayscale(.4) brightness(.8) drop-shadow(0 3px 5px rgba(0, 0, 0, .5)); }
-.bonusbtn:disabled .bword .fs { display: none; }
+/* while a spin plays the button is disabled but never dimmed (owner, 2026-11-17): its glow, pulse, sheen and
+   sparkles all carry on */
+.bonusbtn:disabled .bglow { animation: 13s ease 0s infinite normal none running neonSign; opacity: 1; }
+.bonusbtn:disabled .bfx { display: block; }
 @media (prefers-reduced-motion: reduce) { .bonusbtn .bword { animation: none; } }

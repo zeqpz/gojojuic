@@ -215,8 +215,7 @@ function step(dt, rdt) {
       f.mode = "fall";
       f.x = f.x0; f.y = f.y0; f.vx = f.vx0; f.vy = f.v0;
       f.popAge = 0;
-      ring(f.x, f.y, "#fff4d6", f.size * .2, f.size * .75, .28, 5, .7);   // a little burst as it pops out
-      SFX.pop && SFX.pop();
+      SFX.pop && SFX.pop();                    // (no ring as it pops out: owner, 2026-11-17)
       continue;
     }
     if (f.popAge != null && f.popAge < 1) f.popAge += dt;
@@ -1449,7 +1448,7 @@ const SFX = (() => {
 
 /* ---------------------------------------------------------------- the Bonus button's FX */
 // Sparkles twinkling about the BONUS lettering, a few at a time round its edge (the lightning it had is gone:
-// owner, 2026-11-17) - drawn on a small canvas over the button, idle while it is off.
+// owner, 2026-11-17) - drawn on a small canvas over the button, on while a spin plays too.
 (function bonusFx() {
   const btn = $("bonusBtn"), cv = btn && btn.querySelector(".bfx");
   if (!cv || REDUCED) return;
@@ -1464,7 +1463,7 @@ const SFX = (() => {
   const tick = now => {
     const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
     const dpr = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
-    if (!w || btn.disabled) { cx.clearRect(0, 0, cv.width, cv.height); requestAnimationFrame(tick); return; }
+    if (!w) { cx.clearRect(0, 0, cv.width, cv.height); requestAnimationFrame(tick); return; }   // (it sparkles on while a spin plays)
     if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     cx.setTransform(dpr, 0, 0, dpr, 0, 0);
     cx.clearRect(0, 0, w, h);
