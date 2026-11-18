@@ -30,14 +30,21 @@ An original fruit-slicing slot for [Stake Engine](https://stake-engine.com), bui
 | `tools/blender/fruitkit.py` (+ `fruits_more.py`) | Procedural toon-shaded 3D fruit in Blender 4.2: cel bands, specular blob, rim light, inverted-hull outline; halves are real bisected geometry with an INSIDE material on the cut. Renders a 16-frame tumble for each whole fruit and each half. |
 | `tools/pack_sprites.py` | Packs the Blender frames into one WebP sheet per fruit (`frontend/assets/fruit/`) + `meta.json`, and `art/blender/contact.png`. |
 | `tools/sfx/jd.py`, `jd_spec.py`, `accents.py` | Sound effects: OpenRouter Seed Audio takes (prompts in `jd_spec.py`) cut, cleaned and mastered with fallslotsga's sfx tools -> `frontend/assets/sfx/*.ogg` + `sfx.json` (24 sets, 67 takes: a slice per fruit, swoosh, drop, bump, fuse, boom, frenzy_start, multiplier, frost, combo x3 rising, line_win, big_win, coin_tick). `game.js` plays a different take each time with a pitch nudge; synth fallback. Run `fallslotsga/.venv python tools/sfx/jd.py all`. |
-| `tools/gen_art.py`, `tools/orimg.py` | OpenRouter image generation (background, logo, 2D references). Key: `%USERPROFILE%\.juicedojo\openrouter-key.txt`, never printed. |
+| `tools/gen_art.py`, `tools/orimg.py` | OpenRouter image generation (background, logo, 2D references). Key: `%USERPROFILE%\.juicedojo\openrouter-key.txt`, else `Documents\gamdevkey.txt`; never printed. |
+| `tools/gen_scene.py`, `pack_scene.py`, `pack_features.py` | The cartoon dojo wall (no floor - juice can splash anywhere), the swaying paper lanterns, and the features screen's ninja plate + three icons -> `frontend/assets/scene/`, `assets/features/`. |
+| Opening (`game.js` runIntro / runFeatures) | As zeqpz/orleans: the black-and-white SMUKIEZ ident (letters + sounds from orleans, `assets/intro_letters`, `assets/sfx/intro`) while loading, then the Juice Dojo title over three ninja plates that explain the game, CLICK TO PLAY. |
+| Cinematics (`game.js` cam, starCinematic) | Slow-motion camera close-ups on line wins; the star fruit (bonus icons) get a heartbeat-timed close-up, three or more a riser, a beat of silence and one hit. |
+| `tools/sfx/gen_music.py`, `pack_music.py` | Lyria 3 music: calm ninja loops for the base game and the frenzy, cut to whole bars; key / BPM / beat grid in `assets/music/music.json`. `SFX.music.cue()` plays in-key koto / bell / drone stingers on that grid for stars, lines, combos, wins, big wins, the bonus and the bomb. |
+| `tools/sfx/gen_sfx2.py`, `remaster.py` | Seed Audio takes for the cinematic set; `remaster.py` rebuilds every effect crisp at 48 kHz (bandwidth extension + EQ) from `art/raw/audio/sfx_orig/`. |
 
 ## Run
 
 ```
-C:\Users\CooperHinkel\Documents\fallslotsga\.venv\Scripts\python.exe frontend/mock_rgs.py
+python -m venv .venv && .venv\Scripts\python -m pip install zstandard numpy scipy soundfile pillow
+.venv\Scripts\python.exe frontend/mock_rgs.py
 ```
 then http://localhost:8766/index.html?sessionID=test&rgs_url=http://localhost:8766&lang=en&device=desktop
+(the first start unpacks the books into `math/mock_cache/`, ~12 s).
 
 Rebuild art: `blender -b --factory-startup --python tools/blender/fruitkit.py -- all build,render` (~3 min), then
 `python tools/pack_sprites.py`. Live: in the Blender MCP session `exec` fruitkit.py and call `gallery()`.

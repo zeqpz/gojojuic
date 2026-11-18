@@ -1,0 +1,22 @@
+{
+ "base": {
+  "src": "calm_base_1.mp3",
+  "tonic": 2,
+  "key": "D",
+  "mode": "minor",
+  "bpm": 82.001,
+  "bars": 59,
+  "loopSec": 172.6808,
+  "quantize": true
+ },
+ "frenzy": {
+  "src": "calm_bonus_2.mp3",
+  "tonic": 1,
+  "key": "C#",
+  "mode": "major",
+  "bpm": 92.009,
+  "bars": 63,
+  "loopSec": 164.3318,
+  "quantize": true
+ }
+}

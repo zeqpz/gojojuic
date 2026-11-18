@@ -11,8 +11,12 @@ KEY_FILE = os.path.join(os.path.expanduser("~"), ".juicedojo", "openrouter-key.t
 LOG = os.path.join(ROOT, "art", "log.jsonl")
 
 
+KEY_FALLBACK = os.path.join(os.path.expanduser("~"), "Documents", "gamdevkey.txt")   # the owner's game-asset key
+
+
 def key():
-    with open(KEY_FILE, encoding="utf-8") as fh:
+    path = KEY_FILE if os.path.exists(KEY_FILE) else KEY_FALLBACK
+    with open(path, encoding="utf-8") as fh:
         return fh.read().strip()
 
 
