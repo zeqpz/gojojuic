@@ -20,7 +20,7 @@ const RULES = (() => {
       <div class="pv"><div>${NAME[id]}</div><div>4 <b>${x(PAY[id][1])}</b></div><div>3 <b>${x(PAY[id][0])}</b></div></div></div>`).join("");
     return `
 <section><h4>${T("How it plays")}</h4>
-<p>${T("Every spin drops a 4 x 4 wave of fruit through the dojo. As it passes through the board, time slows, the blade slices every line that pays, and the fruit falls on through. There are no bombs in the base game.")}</p></section>
+<p>${T("Every spin drops a 4 x 4 wave of fruit through the dojo. As it falls through the board, the blade slices every line that pays and the fruit falls on through. There are no bombs in the base game.")}</p></section>
 <section><h4>${T("Lines")}</h4>
 <p>${T("10 lines: 4 rows, 4 columns and 2 diagonals. Lines pay both ways: a line pays when 3 or 4 of the same fruit sit next to each other starting from either end. Only the highest win per line is paid; wins on different lines add up.")}</p>
 <div class="linesvg">${LINES.map(lineSvg).join("")}</div></section>
@@ -28,7 +28,7 @@ const RULES = (() => {
 <section><h4>${T("Combo")}</h4><p>${T("Slice 3 or 4 paying lines in one wave for a x2 combo on that wave's win, 5 or more for x3.")}</p></section>
 <section><h4>Fruit Frenzy</h4>
 <p>${T("3 or more golden star fruit in one spin start Fruit Frenzy: up to 50 faster waves in a row. 4 star fruit start the frenzy multiplier at x2, 5 or more at x3.")}</p>
-<p><b>${T("Bombs")}</b>: ${T("bombs only appear in Fruit Frenzy. Every frenzy wave may carry one: the chance starts at 5% and rises by 0.6% each wave, up to 25% (the live chance is shown beside the board). A bomb wave explodes and pays nothing, and the frenzy ends - everything already won is kept.")}</p>
+<p><b>${T("Bombs")}</b>: ${T("bombs only appear in Fruit Frenzy. Every frenzy wave may carry one: the chance starts at 5% and rises by 0.6% each wave, up to 25%. A bomb wave explodes and pays nothing, and the frenzy ends - everything already won is kept.")}</p>
 <ul>
 <li><b>${T("Multiplier peaches")}</b> (x2, x3, x5, x10): ${T("sliced peaches add their value to one frenzy multiplier (the first replaces x1), which multiplies every frenzy win from that wave on.")}</li>
 <li><b>${T("Frost grapes")}</b>: ${T("knock the bomb chance back down to 5%; it starts rising again from there.")}</li>

@@ -79,12 +79,19 @@ const cell = (r, c) => ({ x: GX + (c + 0.5) * S, y: GY + (r + 0.5) * S });
 const SHEETS = {};
 let META = null;
 async function loadArt(progress) {
+  // the lettering's typeface, before any canvas pop or badge is drawn with it
+  const font = document.fonts ? document.fonts.load('40px "Gang of Three"').catch(() => 0) : 0;
   META = await (await fetch("assets/fruit/meta.json")).json();
+  FX.warm();                                 // the glows, flares and rays the FX kit stamps, built while it loads
+  const stains = FX.loadStains();            // the wall stains' layers (tools/stain_layers.py)
   for (let i = 1; i <= 4; i++) { const im = new Image(); im.src = `assets/fx/splat${i}.webp`; SPLATS.push(im); }
   for (let i = 1; i <= 4; i++) { const im = new Image(); im.src = `assets/fx/drip${i}.webp`; DRIPS.push(im); }
   try {
     FXMETA = await (await fetch("assets/fx/fx.json")).json();
-    for (const k of Object.keys(FXMETA)) { const im = new Image(); im.src = `assets/fx/${k}.webp`; FXIMG[k] = im; }
+    for (const k of Object.keys(FXMETA)) {
+      if (k.startsWith("burst")) continue;   // (the big burst splash is retired: the stain on the wall says it)
+      const im = new Image(); im.src = `assets/fx/${k}.webp`; FXIMG[k] = im;
+    }
   } catch (e) { FXMETA = {}; }
   const ids = Object.keys(META.fruit);
   let done = 0;
@@ -96,22 +103,53 @@ async function loadArt(progress) {
   })));
   // decode up front so the first throw never hitches on an image upload
   await Promise.all(Object.values(SHEETS).map(i => i.decode ? i.decode().catch(() => 0) : 0));
+  await font;
+  await stains;
 }
-function drawFruit(ctx, id, half, spin3d, x, y, size, rot, alpha = 1, flip = false) {
-  const img = SHEETS[SPRITE(id)];
-  if (!img) return;
-  const m = META.fruit[SPRITE(id)], C = META.cell, n = half ? m.half : m.whole;
-  if (!n) return;
-  const f = ((Math.floor(((spin3d / (Math.PI * 2)) % 1 + 1) % 1 * n)) % n);
-  const row = (half ? 2 : 0) + (f >= 8 ? 1 : 0);
+// One fruit from its sheet (tools/pack_sprites.py). clip: "whole" (or false) - the 32-frame tumble, t = the turn in
+// radians; "wob" (or true) - a half rocking on its back, t = the rocking phase in radians; "openR" / "openL" - a half
+// opening out of the cut, t = 0..1. Between two frames it crossfades, so even a slow turn never steps.
+const clipOf = c => c === true ? "wob" : (c === false || c == null) ? "whole" : c;
+function drawFruit(ctx, id, clip, t, x, y, size, rot, alpha = 1, flip = false) {
+  const sid = SPRITE(id), img = SHEETS[sid], m = META && META.fruit[sid];
+  if (!img || !m || !m.clips) return;
+  const name = clipOf(clip), cl = m.clips[name] || m.clips.whole;
+  if (!cl) return;
+  const [first, n] = cl, loop = name === "whole" || name === "wob", C = META.cell, cols = META.cols;
+  const u = loop ? ((t / (Math.PI * 2)) % 1 + 1) % 1 * n : Math.max(0, Math.min(1, t)) * (n - 1);
+  const i0 = Math.min(n - 1, Math.floor(u)), fr = u - i0, i1 = loop ? (i0 + 1) % n : Math.min(n - 1, i0 + 1);
   ctx.save();
-  ctx.globalAlpha = alpha;
   ctx.translate(x, y);
   ctx.rotate(rot);
   if (flip) ctx.scale(-1, 1);
   const k = size * 1.06;   // the render frames the fruit at ~89% of the tile
-  ctx.drawImage(img, (f % 8) * C, row * C, C, C, -k / 2, -k / 2, k, k);
+  const tile = (i, a) => {
+    const q = first + i;
+    ctx.globalAlpha = a;
+    ctx.drawImage(img, (q % cols) * C, Math.floor(q / cols) * C, C, C, -k / 2, -k / 2, k, k);
+  };
+  tile(i0, alpha);
+  if (fr > .02 && i1 !== i0) tile(i1, alpha * fr);
   ctx.restore();
+}
+// the soft shadow a fruit throws on the wall, drawn once and stamped
+const SHADOW = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const x = c.getContext("2d"), rg = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  rg.addColorStop(0, "rgba(25,12,4,.34)"); rg.addColorStop(.6, "rgba(25,12,4,.16)"); rg.addColorStop(1, "rgba(25,12,4,0)");
+  x.fillStyle = rg; x.fillRect(0, 0, 128, 128);
+  return c;
+})();
+const shadowAt = (x, y, r) => g.drawImage(SHADOW, x - r, y - r, r * 2, r * 2);
+
+/* ---------------------------------------------------------------- lettering */
+// Fruit Ninja's typeface (Gang of Three, see fn.css): one word as its stacked outline, fill and sheen layers.
+// cls: the colour (gold, red, pink, violet, white) and any extras (shine, num, ...); attrs go on the outer span.
+const escHTML = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function fnHTML(text, cls = "gold", attrs = "") {
+  const t = escHTML(text);
+  return `<span class="fnt ${cls}"${attrs ? " " + attrs : ""}><span class="fo">${t}</span>` +
+         `<span class="ff" aria-hidden="true">${t}</span><span class="fs" aria-hidden="true">${t}</span></span>`;
 }
 
 /* ---------------------------------------------------------------- world */
@@ -189,10 +227,15 @@ function step(dt, rdt) {
   world.blocks = world.blocks.filter(b => b.state !== "gone");
   collide();
   world.fruit = world.fruit.filter(f => !f.gone && (f.mode === "held" || f.mode === "wait" || (f.y < H + S * 2 && f.y > -H * 3 && f.x > -S * 3 && f.x < W + S * 3)));
-  for (const p of world.pieces) { p.age = (p.age || 0) + dt; integrate(p, dt); }
+  for (const p of world.pieces) {
+    p.age = (p.age || 0) + dt;
+    if (p.age < OPEN_T) p.vr = p.vr0 * (p.age / OPEN_T) ** 2;   // it opens out of the cut before it starts to roll
+    integrate(p, dt);
+  }
   world.pieces = world.pieces.filter(p => p.y < H + S * 2);
   for (const d of world.drops) {
     d.vy += G * .85 * dt; d.vx *= 1 - 1.2 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.life -= dt;
+    if (d.life <= 0 && d.juice && !d.spray && !d.landed) { d.landed = true; if (Math.random() < .5 && d.y < H) FX.dropStain(d); }
   }
   for (const d of world.drips) {
     d.t += rdt;
@@ -245,21 +288,23 @@ function step(dt, rdt) {
   for (const r of world.rings) r.age += rdt * speed();
   world.rings = world.rings.filter(r => r.age < r.dur);
   shake = Math.max(0, shake - rdt * 2.6);
+  FX.update(dt, rdt);
   // juice stains on the wall fade slowly
   stainFade += rdt;
   if (stainFade > 0.1) {
     stainFade = 0;
-    gs.save(); gs.globalCompositeOperation = "destination-out"; gs.fillStyle = "rgba(0,0,0,0.018)"; gs.fillRect(0, 0, W, H); gs.restore();
+    gs.save(); gs.globalCompositeOperation = "destination-out"; gs.fillStyle = "rgba(0,0,0,0.012)"; gs.fillRect(0, 0, W, H); gs.restore();
   }
 }
 let stainFade = 0;
 
 // Whole fruit and halves are round bodies with mass (size squared; a half weighs less): any two that meet
-// are pushed apart and bounce (restitution .45), and a glancing hit sets them spinning.
+// are eased apart (60% of the overlap a frame, so a stack never jitters) and bounce softly (restitution .28),
+// and a glancing hit sets them spinning. A half joins in once it has opened.
 function collide() {
   const list = [];
   for (const f of world.fruit) if (!f.gone && f.mode !== "held" && f.mode !== "wait" && !(f.delay > 0) && f.y > -S * 1.5 && f.y < H + S) list.push([f, f.size * .4, f.size * f.size]);
-  for (const p of world.pieces) if (p.y > -S && p.y < H + S && p.age > .08) list.push([p, p.size * .3, p.size * p.size * .4]);
+  for (const p of world.pieces) if (p.y > -S && p.y < H + S && p.age > OPEN_T) list.push([p, p.size * .3, p.size * p.size * .4]);
   for (let i = 0; i < list.length; i++) {
     const [a, ra, ma] = list[i];
     for (let j = i + 1; j < list.length; j++) {
@@ -270,15 +315,15 @@ function collide() {
       if (d2 >= rr * rr || d2 < 1e-6) continue;
       const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, overlap = rr - d;
       const wa = mb / (ma + mb), wb = ma / (ma + mb);
-      a.x -= nx * overlap * wa; a.y -= ny * overlap * wa;
-      b.x += nx * overlap * wb; b.y += ny * overlap * wb;
+      a.x -= nx * overlap * wa * .6; a.y -= ny * overlap * wa * .6;
+      b.x += nx * overlap * wb * .6; b.y += ny * overlap * wb * .6;
       const rvx = b.vx - a.vx, rvy = b.vy - a.vy, rel = rvx * nx + rvy * ny;
       if (rel >= 0) continue;
-      const jimp = -(1.45) * rel / (1 / ma + 1 / mb);
+      const jimp = -(1.28) * rel / (1 / ma + 1 / mb);
       a.vx -= jimp / ma * nx; a.vy -= jimp / ma * ny;
       b.vx += jimp / mb * nx; b.vy += jimp / mb * ny;
       const tang = (rvx * -ny + rvy * nx) / S;     // a glancing hit spins them
-      a.vr += tang * 1.6; b.vr -= tang * 1.6;
+      a.vr += tang * 1.1; b.vr -= tang * 1.1;
       if (-rel > 220 && !(a.half && b.half)) SFX.bump();
     }
   }
@@ -288,19 +333,20 @@ function draw() {
   g.setTransform(DPR, 0, 0, DPR, 0, 0);
   g.clearRect(0, 0, W, H);
   if (shake > 0) g.translate((Math.random() - .5) * 26 * shake, (Math.random() - .5) * 26 * shake);
+  FX.drawRoom(g);                            // warm bokeh and dust in the light, behind everything
   for (const r of world.rings) {
     const k = r.age / r.dur;
     g.save(); g.globalAlpha = (1 - k) * r.a; g.strokeStyle = r.col; g.lineWidth = r.w * (1 - k) + 1;
     g.beginPath(); g.arc(r.x, r.y, r.r0 + (r.r1 - r.r0) * (1 - (1 - k) ** 3), 0, Math.PI * 2); g.stroke(); g.restore();
   }
-  for (const m of world.mists) {             // a soft puff of juice where a fruit was cut
-    const k = m.age / m.dur, r = m.r0 + (m.r1 - m.r0) * (1 - (1 - k) ** 2);
-    const rg = g.createRadialGradient(m.x, m.y, 0, m.x, m.y, r);
-    rg.addColorStop(0, m.col + "66"); rg.addColorStop(.55, m.col + "22"); rg.addColorStop(1, m.col + "00");
-    g.globalAlpha = 1 - k; g.fillStyle = rg; g.beginPath(); g.arc(m.x, m.y, r, 0, Math.PI * 2); g.fill();
-  }
+  FX.drawWet(g);                             // wet stains catching the light, drying; running drips' beads
+  FX.drawMists(g, world.mists);              // a soft puff of juice where a fruit was cut
   g.globalAlpha = 1;
-  for (const p of world.pieces) drawFruit(g, p.id, true, p.spin, p.x, p.y, p.size, p.rot, 1, p.flip);
+  for (const p of world.pieces) {      // the halves: opening out of the cut, then rocking as they roll away
+    shadowAt(p.x + S * .08, p.y + S * .13, p.size * .4);
+    if (p.age < OPEN_T) drawFruit(g, p.id, p.side, p.age / OPEN_T, p.x, p.y, p.size, p.rot);
+    else drawFruit(g, p.id, "wob", p.spin, p.x, p.y, p.size, p.rot, 1, p.side === "openL");
+  }
   for (const d of world.drips) {      // a drip unrolling down the wall: shown down to its creeping head
     const k = 1 - Math.pow(1 - Math.min(1, d.t / d.dur), 2.6), sh = d.h * k;
     if (sh < 1) continue;
@@ -311,43 +357,22 @@ function draw() {
   // soft shadows on the wall behind the fruit, offset down-right: they are in front of it
   for (const f of world.fruit) {
     if (f.delay > 0 || f.mode === "wait") continue;
-    const rg = g.createRadialGradient(f.x + S * .1, f.y + S * .16, 0, f.x + S * .1, f.y + S * .16, f.size * .52);
-    rg.addColorStop(0, "rgba(25,12,4,.34)"); rg.addColorStop(.6, "rgba(25,12,4,.16)"); rg.addColorStop(1, "rgba(25,12,4,0)");
-    g.fillStyle = rg; g.beginPath(); g.arc(f.x + S * .1, f.y + S * .16, f.size * .52, 0, Math.PI * 2); g.fill();
+    shadowAt(f.x + S * .1, f.y + S * .16, f.size * .52);
   }
   for (const f of world.fruit) {
     if (f.delay > 0 || f.mode === "wait") continue;
-    const sp = Math.hypot(f.vx, f.vy);
-    if (sp > 650 && f.mode !== "held") {     // a faint motion trail when it is really moving
-      for (let i = 2; i >= 1; i--) drawFruit(g, f.id, false, f.spin, f.x - f.vx * .014 * i, f.y - f.vy * .014 * i, f.size, f.rot, .12 / i);
-    }
-    if (f.glow) {
-      const t = performance.now() / 1000;
-      g.save();
-      const rg = g.createRadialGradient(f.x, f.y, f.size * .2, f.x, f.y, f.size * (.85 + .08 * Math.sin(t * 8)));
-      rg.addColorStop(0, f.glow + "aa"); rg.addColorStop(1, f.glow + "00");
-      g.fillStyle = rg; g.beginPath(); g.arc(f.x, f.y, f.size, 0, Math.PI * 2); g.fill(); g.restore();
-    }
-    // a slight stretch along the direction of travel, and the rocking tilt
-    const st = f.mode === "held" ? 0 : Math.min(.07, sp / 16000), ang = Math.atan2(f.vy, f.vx);
-    g.save();
-    g.translate(f.x, f.y); g.rotate(ang); g.scale(1 + st, 1 - st * .6); g.rotate(-ang); g.translate(-f.x, -f.y);
+    FX.auraBack(g, f);                       // a special fruit's halo, rays, light streak (fxkit.js)
+    // the tumble (crossfaded frames), the air's rocking tilt, and the little pop as it comes out of the top
     const pk = f.popAge == null ? 1 : Math.min(1, f.popAge / .16), popS = pk >= 1 ? 1 : .35 + .65 * (1 + 2.2 * Math.pow(pk - 1, 3) + 1.2 * Math.pow(pk - 1, 2));
-    drawFruit(g, f.id, false, f.spin, f.x, f.y, f.size * popS, f.rot + (f.wobA ? Math.sin(f.ph) * f.wobA : 0));
-    g.restore();
+    drawFruit(g, f.id, "whole", f.spin, f.x, f.y, f.size * popS, f.rot + (f.wobA ? Math.sin(f.ph) * f.wobA : 0));
+    FX.auraFront(g, f);                      // its twinkles, crackling arcs, spitting fuse
     if (f.id.startsWith("PW")) badge(g, f.x, f.y + f.size * .05, "x" + f.id.slice(2), f.size * .42);
   }
   for (const b of world.bursts) drawSheet(b, b.img, FXMETA[b.key], false);
-  // juice: each drop a teardrop streaked along its flight, with a glint
-  g.lineCap = "round";
-  for (const d of world.drops) {
-    const a = Math.min(1, d.life * 3), sp = Math.hypot(d.vx, d.vy), st = Math.min(.035, 14 / Math.max(1, sp));
-    g.globalAlpha = a;
-    g.strokeStyle = d.col; g.lineWidth = d.r * 2;
-    g.beginPath(); g.moveTo(d.x - d.vx * st, d.y - d.vy * st); g.lineTo(d.x, d.y); g.stroke();
-    if (d.r > 2.5) { g.globalAlpha = a * .7; g.fillStyle = "#fff"; g.beginPath(); g.arc(d.x - d.r * .3, d.y - d.r * .3, d.r * .32, 0, Math.PI * 2); g.fill(); }
-  }
+  // juice in flight: glossy lit drops stretched along their flight (the bomb's embers as streaks)
+  FX.drawDrops(g, world.drops);
   g.globalAlpha = 1;
+  FX.drawParts(g);                           // juice beads, chunks, seeds, smoke; glitter, sparks, embers, frost
   // cut flashes: a hot line across the fruit along the stroke, and a four-point glint
   g.save(); g.globalCompositeOperation = "lighter";
   for (const c of world.cuts) {
@@ -355,15 +380,12 @@ function draw() {
     g.globalAlpha = a;
     g.strokeStyle = "#fff"; g.lineWidth = 5 * (1 - k) + 1;
     g.beginPath(); g.moveTo(c.x - Math.cos(c.ang) * len, c.y - Math.sin(c.ang) * len); g.lineTo(c.x + Math.cos(c.ang) * len, c.y + Math.sin(c.ang) * len); g.stroke();
-    const r = c.len * .55 * (1 - k * .5);
-    g.fillStyle = c.col;
-    g.beginPath();
-    for (let i = 0; i < 8; i++) { const an = i * Math.PI / 4 + c.ang, rr = i % 2 ? r * .16 : r; g.lineTo(c.x + Math.cos(an) * rr, c.y + Math.sin(an) * rr); }
-    g.closePath(); g.fill();
+    FX.glint(g, c.x, c.y, c.len * .9 * (1 - k * .4), c.col, c.ang + Math.PI / 4);
   }
   g.restore();
   for (const b of world.blades) drawBlade(b);
   for (const b of world.booms) drawSheet(b, FXIMG.boom, FXMETA.boom, true);
+  FX.drawTop(g);                             // burst flares and rays, lightning
   for (const p of world.pops) drawPop(p);
   if (world.lens.length) { g.setTransform(DPR, 0, 0, DPR, 0, 0); drawLens(); }
 }
@@ -389,7 +411,7 @@ function drawSheet(b, img, m, glow) {
 }
 function badge(ctx, x, y, text, px) {
   ctx.save();
-  ctx.font = `700 ${px}px Fredoka, sans-serif`;
+  ctx.font = `${px}px "Gang of Three", Fredoka, sans-serif`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineWidth = px * .22; ctx.strokeStyle = "#140a04"; ctx.lineJoin = "round";
   ctx.strokeText(text, x, y); ctx.fillStyle = "#fff"; ctx.fillText(text, x, y);
@@ -434,9 +456,8 @@ function drawBlade(b) {
   // a spark at the tip while it moves
   if (k < 1) {
     const [hx, hy] = pts[N];
-    const rg = g.createRadialGradient(hx, hy, 0, hx, hy, b.w * 2.2);
-    rg.addColorStop(0, "#ffffffee"); rg.addColorStop(.4, b.glow + "88"); rg.addColorStop(1, b.glow + "00");
-    g.globalCompositeOperation = "lighter"; g.fillStyle = rg; g.beginPath(); g.arc(hx, hy, b.w * 2.2, 0, Math.PI * 2); g.fill();
+    g.globalCompositeOperation = "lighter"; g.globalAlpha = fade;
+    FX.bladeHead(g, b, hx, hy);
   }
   g.restore();
 }
@@ -448,8 +469,11 @@ function drawPop(p) {
   g.globalAlpha = k > .7 ? 1 - (k - .7) / .3 : 1;
   g.translate(p.x, p.y - p.rise * k);
   g.scale(s, s);
-  g.font = `700 ${p.px}px Fredoka, sans-serif`;
+  g.font = `${p.px}px "Gang of Three", Fredoka, sans-serif`;
   g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round";
+  g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha *= .38;
+  FX.textGlow(g, p.col, g.measureText(p.text).width * 1.4 + p.px, p.px * 2.3);
+  g.restore();
   g.lineWidth = p.px * .22; g.strokeStyle = "#1a0b04"; g.strokeText(p.text, 0, 0);
   const gr = g.createLinearGradient(0, -p.px * .5, 0, p.px * .5);
   gr.addColorStop(0, "#ffffff"); gr.addColorStop(.45, p.col); gr.addColorStop(1, shade(p.col, -.35));
@@ -461,7 +485,7 @@ function shade(hex, k) {
   const n = parseInt(hex.slice(1), 16), f = c => Math.max(0, Math.min(255, Math.round(c + (k < 0 ? c * k : (255 - c) * k))));
   return "#" + ((f(n >> 16) << 16) | (f((n >> 8) & 255) << 8) | f(n & 255)).toString(16).padStart(6, "0");
 }
-const pop = (x, y, text, col = "#fff", px = 34, dur = 1.1, rise = 50) => world.pops.push({ x, y, text, col, px, dur, rise, age: 0 });
+const pop = (x, y, text, col = "#fff", px = 34, dur = 1.1, rise = 50) => { world.pops.push({ x, y, text, col, px, dur, rise, age: 0 }); FX.sparkle(x, y, col, 8); };
 const ring = (x, y, col, r0, r1, dur = .5, w = 8, a = 1) => world.rings.push({ x, y, col, r0, r1, dur, w, a, age: 0 });
 
 /* ---------------------------------------------------------------- slicing */
@@ -513,10 +537,17 @@ function juice(x, y, col, n = 18, power = 1, dx = 0, dy = 0) {
                                                   : Math.random() * Math.PI * 2;
     const v = (160 + Math.random() * 620) * power;
     world.drops.push({ x, y, vx: Math.cos(a) * v + dx * 220, vy: Math.sin(a) * v - 140 + dy * 220,
-                       r: 1.6 + Math.random() ** 2 * 5.5 * power, col, life: .45 + Math.random() * .6 });
+                       r: 1.6 + Math.random() ** 2 * 5.5 * power, col, life: .45 + Math.random() * .6, juice: true });
+  }
+  for (let i = 0; i < 14 * power; i++) {     // and a fine spray, fast and short-lived
+    const a = Math.random() * Math.PI * 2, v = (500 + Math.random() * 700) * power;
+    world.drops.push({ x, y, vx: Math.cos(a) * v + dx * 200, vy: Math.sin(a) * v - 60 + dy * 200, r: .6 + Math.random() * .8, col,
+                       life: .18 + Math.random() * .25, juice: true, spray: true });
   }
   world.mists.push({ x, y, col, r0: S * .15, r1: S * .9 * power, age: 0, dur: .55 });
-  // (no splat or drips left on the wall: the owner wants the wood clean)
+  // the stain it leaves on the wall (fxkit.js): the juice soaking into the wood, wet and lit at first, drying; a run
+  // or two creeping down from it. The wall's stains fade slowly (see step).
+  FX.stain(x, y, col, power);
   // (juice on the camera - lensSplat - is off: the owner didn't want the big splash sliding down the screen)
 }
 
@@ -565,24 +596,25 @@ function drawLens() {
     g.restore();
   }
 }
+// A cut fruit comes apart in 3D: its two halves start as the whole fruit, split along the stroke and swing open
+// (the Blender openR / openL frames, OPEN_T long) as they fly apart, then rock on their backs as they roll away.
+const OPEN_T = .24;
 function slice(f, dirx, diry) {
   if (!f || f.gone) return;
   f.gone = true;
-  const l = Math.hypot(dirx, diry) || 1, px = -diry / l, py = dirx / l;
-  const col = (META.fruit[SPRITE(f.id)] || {}).juice || "#fff";
-  for (const s of [1, -1]) {
-    world.pieces.push({ id: f.id, half: true, age: 0, vt: 1500, g: f.g, x: f.x + px * s * f.size * .14, y: f.y + py * s * f.size * .14,
-                        vx: f.vx * .5 + px * s * (200 + Math.random() * 140) + dirx / l * 110,
-                        vy: f.vy * .55 + py * s * (200 + Math.random() * 140) - 160,
-                        rot: Math.atan2(diry, dirx) + (s > 0 ? 0 : Math.PI), vr: s * (3 + Math.random() * 4),
-                        spin: Math.random() * 6, vs: s * (4 + Math.random() * 4), size: f.size * .92, flip: s < 0 });
+  const l = Math.hypot(dirx, diry) || 1, dx = dirx / l, dy = diry / l;
+  const m = META.fruit[SPRITE(f.id)] || {}, col = m.juice || "#fff";
+  const rot = Math.atan2(dy, dx) - Math.PI / 2;    // the sprites' cut line (their local y) along the stroke
+  if (m.clips && m.clips.openR) for (const s of [1, -1]) {
+    // the right half (local +x) goes off to the stroke's right, the left half to its left
+    const ox = dy * s, oy = -dx * s, v = S * (2.4 + Math.random() * .9), vs = 4.5 + Math.random() * 3;
+    world.pieces.push({ id: f.id, half: true, side: s > 0 ? "openR" : "openL", age: 0, vt: 1500, g: f.g, x: f.x, y: f.y,
+                        vx: f.vx * .5 + ox * v + dx * 90, vy: f.vy * .55 + oy * v - 120,
+                        rot, vr: 0, vr0: s * (2 + Math.random() * 3), spin: -vs * OPEN_T, vs, size: f.size });
   }
-  juice(f.x, f.y, col, 22, f.id === "JM" ? 2 : 1, dirx / l, diry / l);
-  const bk = Object.keys(FXMETA).filter(k => k.startsWith("burst")), key = bk[Math.floor(Math.random() * bk.length)];
-  const bimg = key && tinted(FXIMG[key], col);
-  if (bimg) world.bursts.push({ key, img: bimg, x: f.x, y: f.y, ang: Math.atan2(diry, dirx) + (Math.random() < .5 ? 0 : Math.PI),
-                                size: f.size * (f.id === "JM" ? 3.2 : 2.6), t: 0, dur: .55, alpha: .95 });
-  world.cuts.push({ x: f.x, y: f.y, ang: Math.atan2(diry, dirx), len: f.size * .6, col, age: 0, dur: .22 });
+  juice(f.x, f.y, col, 22, f.id === "JM" ? 2 : 1, dx, dy);
+  FX.cut(f, dx, dy);                         // beads, chunks, seeds, sparkles; a special fruit's burst
+  world.cuts.push({ x: f.x, y: f.y, ang: Math.atan2(dy, dx), len: f.size * .6, col, age: 0, dur: .22 });
   SFX.squish(f.id);
 }
 
@@ -690,7 +722,7 @@ async function playWave(e) {
   const sc = e.scatters || [];
   if (sc.length) {
     SFX.chime(sc.length);
-    for (const [r, c] of sc) { const f = fruitAt(fruits, r, c); ring(f.x, f.y, "#ffd84a", S * .3, S * .8, .6, 6); }
+    for (const [r, c] of sc) { const f = fruitAt(fruits, r, c); ring(f.x, f.y, "#ffd84a", S * .3, S * .8, .6, 6); FX.ping(f); }
   }
   // power fruit first: sliced, and their effect flies to the frenzy panel
   for (const p of (e.power || [])) {
@@ -777,6 +809,7 @@ async function bombWave(e, fruits, blk) {
   ring(p.x, p.y, "#fff", S * .3, S * 4, .7, 26);
   ring(p.x, p.y, "#ffb347", S * .2, S * 3, .55, 16);
   world.booms.push({ x: p.x, y: p.y - S * .3, size: S * 5.4, t: 0, dur: 1.15, smoke: true });
+  FX.boom(p.x, p.y);
   for (let i = 0; i < 40; i++) {           // embers: hot sparks thrown out and falling
     const a = Math.random() * Math.PI * 2, v = 300 + Math.random() * 900;
     world.drops.push({ x: p.x, y: p.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 250, r: 1.5 + Math.random() * 2.8,
@@ -799,7 +832,7 @@ async function bombWave(e, fruits, blk) {
   }
   blk.released = true;
   timeScale = 1;
-  banner(T("BOOM!"), T("The frenzy is over"), "bomb", "assets/win/boom.webp");
+  banner(T("BOOM!"), T("The frenzy is over"), "bomb");
   await sleep(1300);
   hideBanner();
 }
@@ -812,6 +845,8 @@ async function frenzyStart(e) {
   SFX.fanfare();
   await bonusIntro(e);
   document.body.classList.add("frenzy");
+  document.body.classList.toggle("xf", !!e.xtreme);
+  FX.setFrenzy(e.xtreme ? 2 : 1);
 }
 
 // The bonus lands (orleans' bonusIntro, in our paint): the game fades to black, the wall comes up with the
@@ -836,10 +871,10 @@ function bonusIntro(e) {
     wrap.innerHTML =
       `<div class="wall"></div>` +
       `<div class="inner"><div class="bstack">` +
-        `<img class="blogo" src="assets/bonus/wm_${x ? "xfrenzy" : "frenzy"}.webp" alt="${x ? "Xtreme Frenzy" : "Fruit Frenzy"}" draggable="false">` +
-        `<div class="byou"><img src="assets/bonus/wm_upto.webp" alt="${T("Up to")}" draggable="false"></div>` +
+        `<div class="blogo">${fnHTML(x ? "Xtreme Frenzy" : "Fruit Frenzy", x ? "pink shine" : "red shine")}</div>` +
+        `<div class="byou">${fnHTML(T("Up to"), "white")}</div>` +
         `<div class="bnum" aria-label="${e.maxWaves || 50}"><i class="brays" aria-hidden="true"></i><div class="bfig">${numeralRow(String(e.maxWaves || 50))}</div></div>` +
-        `<div class="bfs"><img src="assets/bonus/wm_waves.webp" alt="${T("Frenzy waves")}" draggable="false"></div>` +
+        `<div class="bfs">${fnHTML(T("Frenzy waves"), "gold")}</div>` +
         `<div class="bhow">${bonusHow(e)}</div>` +
         `<div class="bcont">${T("Click or press Space to continue")}</div>` +
       `</div></div>`;
@@ -847,7 +882,7 @@ function bonusIntro(e) {
     const stack = wrap.querySelector(".bstack");
     const fit = () => stack.style.setProperty("--fit", Math.min(1, wrap.clientHeight * .94 / Math.max(1, stack.offsetHeight)).toFixed(3));
     fit();
-    wrap.querySelector(".blogo").addEventListener("load", fit);
+    if (document.fonts) document.fonts.ready.then(fit);
     addEventListener("resize", fit);
     let phase = 0, hold = null;
     const onKey = ev => { if (ev.code !== "Space" && ev.code !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); go(); };
@@ -886,7 +921,8 @@ async function frenzyEnd(e) {
   await sleep(300);
   state.frenzy = false;
   state.hadFrenzy = true;
-  document.body.classList.remove("frenzy");
+  document.body.classList.remove("frenzy", "xf");
+  FX.setFrenzy(0);
   frostOff();
   const card = $("fsCard");
   if (card.classList.contains("on")) {
@@ -965,10 +1001,9 @@ function flyTo(x, y, el, text, col) {
 }
 
 /* ---------------------------------------------------------------- banner, win */
-function banner(big, sub, cls = "", img = null) {
+function banner(big, sub, cls = "") {
   const b = $("banner");
-  if (img) $("bannerBig").innerHTML = `<img class="bimg" src="${img}" alt="${big}" draggable="false">`;
-  else $("bannerBig").textContent = big;
+  $("bannerBig").innerHTML = fnHTML(big, cls === "bomb" ? "red shine" : "gold shine");
   $("bannerSub").textContent = sub;
   b.className = "banner show " + cls;
 }
@@ -1413,8 +1448,8 @@ const SFX = (() => {
 })();
 
 /* ---------------------------------------------------------------- the Bonus button's FX */
-// Lightning crackling round the BONUS lettering (a jagged bolt out from its edge every second or two, flickering
-// twice and gone) and sparkles twinkling about it - drawn on a small canvas over the button, idle while it is off.
+// Sparkles twinkling about the BONUS lettering, a few at a time round its edge (the lightning it had is gone:
+// owner, 2026-11-17) - drawn on a small canvas over the button, idle while it is off.
 (function bonusFx() {
   const btn = $("bonusBtn"), cv = btn && btn.querySelector(".bfx");
   if (!cv || REDUCED) return;
@@ -1434,14 +1469,10 @@ const SFX = (() => {
     cx.setTransform(dpr, 0, 0, dpr, 0, 0);
     cx.clearRect(0, 0, w, h);
     next -= dt;
-    if (next <= 0) {   // a new bolt: from the lettering's edge outward, sometimes a fork
+    if (next <= 0) {   // a little cluster of twinkles somewhere on the lettering's edge (no lightning: owner, 2026-11-17)
       next = .35 + Math.random() * 1.1;
       const a = Math.random() * Math.PI * 2, rx = w * .27, ry = h * .19;
       const x0 = w / 2 + Math.cos(a) * rx, y0 = h / 2 + Math.sin(a) * ry;
-      const len = Math.min(w, h) * (.3 + Math.random() * .25), b = a + (Math.random() - .5) * .9;
-      const pts = jag(x0, y0, x0 + Math.cos(b) * len, y0 + Math.sin(b) * len, len * .45, 4);
-      const fork = Math.random() < .5 ? jag(...pts[8], pts[8][0] + Math.cos(b + .7) * len * .5, pts[8][1] + Math.sin(b + .7) * len * .5, len * .25, 3) : null;
-      bolts.push({ pts, fork, age: 0, dur: .42 });
       for (let i = 0; i < 3; i++) stars.push({ x: x0 + (Math.random() - .5) * 40, y: y0 + (Math.random() - .5) * 28, age: 0, dur: .5 + Math.random() * .4, r: 5 + Math.random() * 6 });
     }
     if (Math.random() < dt * 3) stars.push({ x: w * (.2 + Math.random() * .6), y: h * (.3 + Math.random() * .4), age: 0, dur: .6 + Math.random() * .6, r: 4 + Math.random() * 6 });

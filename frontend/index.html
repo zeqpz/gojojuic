@@ -132,6 +132,8 @@
   .intro.ready .introbar { display: none; }
   body.replay .betstep, body.replay .spinwrap, body.replay #bonusBtn, body.replay #autoBtn { visibility: hidden; }
 </style>
+<link rel="stylesheet" href="fn.css">
+<link rel="stylesheet" href="fx.css">
 </head>
 <body>
 <div id="bg"></div>
@@ -140,11 +142,12 @@
 <!-- the frenzy multiplier, painted on the wall in white beside the board (no plate): under the fruit -->
 <div id="fsCard" class="wallfs" aria-live="polite">
   <div class="wcol right">
-    <img class="wlbl" src="assets/bonus/ww_multi.webp" alt="Multi" draggable="false">
+    <div class="wlbl"><span class="fnt white"><span class="fo">Multi</span><span class="ff" aria-hidden="true">Multi</span><span class="fs" aria-hidden="true">Multi</span></span></div>
     <div class="wnum" id="fsMult"></div>
   </div>
 </div>
 <canvas id="fx" class="layer"></canvas>
+<div id="edgefx" aria-hidden="true"></div>
 <div id="frost"></div>
 <div id="flash"></div>
 
@@ -159,7 +162,7 @@
        the left and Rapid and Auto stacked on the right. The shapes are vector, drawn by
        buildHud(); the Bonus button sits apart in the corner. -->
   <div class="hud">
-    <button class="buy bonusbtn" id="bonusBtn"><i class="bglow" aria-hidden="true"></i><canvas class="bfx" aria-hidden="true"></canvas><i class="bshine" aria-hidden="true"></i>Bonus</button>
+    <button class="buy bonusbtn" id="bonusBtn"><i class="bglow" aria-hidden="true"></i><canvas class="bfx" aria-hidden="true"></canvas><span class="bword"><span class="fnt gold shine"><span class="fo">Bonus</span><span class="ff" aria-hidden="true">Bonus</span><span class="fs" aria-hidden="true">Bonus</span></span></span></button>
     <div class="hudframe" style="--hud-fw: 1030.39; --hud-fh: 136;">
       <svg class="hudshape" aria-hidden="true" focusable="false" viewBox="0 0 1030.39 136"><path d="M85.81 76A16 16 0 0 1 85.81 60L107.18 23A10 10 0 0 1 115.84 18L824.31 18A10 10 0 0 0 832.95 13.02L834.73 9.97A12 12 0 0 1 845.1 4L905.27 4A12 12 0 0 1 915.66 9.99L945.15 60.99A14 14 0 0 1 945.15 75.01L915.66 126.01A12 12 0 0 1 905.27 132L845.1 132A12 12 0 0 1 834.73 126.03L832.95 122.98A10 10 0 0 0 824.31 118L115.84 118A10 10 0 0 1 107.18 113Z"></path></svg>
       <button class="hudbtn menu" id="menuBtn" aria-label="Game information" style="left: 0.3882%; top: 2.9412%; width: 10.4056%; height: 44.8529%;"><svg class="tabshape" aria-hidden="true" focusable="false" viewBox="4 4 107.22 61"><path d="M36.33 9A10 10 0 0 1 44.99 4L93.9 4A10 10 0 0 1 102.56 19L78.89 60A10 10 0 0 1 70.23 65L21.32 65A10 10 0 0 1 12.66 50Z"></path></svg>Info</button>
@@ -272,6 +275,7 @@
 <script src="rgs.js"></script>
 <script src="hud.js"></script>
 <script src="rules.js"></script>
+<script src="fxkit.js"></script>
 <script src="game.js"></script>
 <script src="winscreen.js"></script>
 </body>

@@ -1,25 +1,13 @@
 /* Juice Dojo win screen - zeqpz/orleans' totalWinScreen, ported (structure, timing and motion kept: the figure
- * counting up in numeral images on its backing, the tier headline slamming in at 15x / 40x / 100x with its sheen,
- * flash, knock and sparks, the HUD bar dropping away, physics icons raining behind) and reskinned: juicy numerals
- * (assets/num), juicy wordmarks (assets/win/*), a juice-splash backing, and our own 3D fruit raining.
+ * counting up on its backing, the tier headline slamming in at 15x / 40x / 100x with its sheen, flash, knock and
+ * sparks, the HUD bar dropping away, physics icons raining behind) and reskinned: Fruit Ninja's lettering (the
+ * Gang of Three typeface, fnHTML in game.js) for the headlines and the figure, a paper backing, our 3D fruit raining.
  * Needs game.js's SHEETS / META / drawFruit, fmt, bet(), RGS, SFX, T. */
 "use strict";
 
-const NUMERAL = { ".": "dot", ",": "comma", "x": "x", "%": "pct", "$": "dollar", "€": "euro" };
-function numeralRow(text) {
-  let html = "", sym = "";
-  const flush = () => { if (sym) { html += `<span class="sym">${sym.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</span>`; sym = ""; } };
-  for (const ch of String(text)) {
-    const name = /[0-9]/.test(ch) ? ch : NUMERAL[ch];
-    if (name) { flush(); html += `<img src="assets/num/${name}.webp" alt="${ch}" draggable="false">`; }
-    else if (ch === " ") { flush(); }
-    else sym += ch;
-  }
-  flush();
-  return html;
-}
-// the same glyphs in white, painted on the wall (the frenzy counter)
-function numeralRowWhite(text) { return numeralRow(text).replaceAll('src="assets/num/', 'src="assets/num/w_'); }
+// figures in the lettering: gold on the win screen and the frenzy intro, white painted on the wall
+function numeralRow(text) { return fnHTML(text, "gold num"); }
+function numeralRowWhite(text) { return fnHTML(text, "white num"); }
 
 const restyle = el => void el.offsetWidth;
 
@@ -61,8 +49,10 @@ function headFx(wrap, head, lvl) {
   head.style.setProperty("--lvl", lvl);
   head.style.setProperty("--hs", f.scale);
   head.style.setProperty("--hglow", f.glow);
-  const art = head.querySelector(".twlogo.on"), sheen = head.querySelector(".twsheen");
+  const art = head.querySelector("img.twlogo.on"), sheen = head.querySelector(".twsheen");
   if (art && sheen) sheen.style.setProperty("--art", `url("${art.getAttribute("src")}")`);
+  const word = head.querySelector(".twlogo.on.fnt");   // the lettering's own sheen sweeps again as it lands
+  if (word) { word.classList.remove("shine"); restyle(word); word.classList.add("shine"); }
   if (REDUCED) return;
   sparkBurst(head, { n: f.sparks, reach: f.reach, colors: f.colors, size: 1 + lvl * .12 });
   const twin = wrap.querySelector(".twin"), flash = wrap.querySelector(".twflash");
@@ -213,13 +203,14 @@ function hudBack() {
 }
 
 // The marks the headline climbs through, in multiples of the bet
+// (art is the headline's id; fn its colour in the lettering)
 const WIN_TIERS = [
-  { at: 15,  art: "win/big_win.webp",  label: "Big win",  rate: 1 },
-  { at: 40,  art: "win/mega_win.webp", label: "Mega win", rate: 1.12 },
-  { at: 100, art: "win/epic_win.webp", label: "Epic win", rate: 1.25 },
+  { at: 15,  art: "win/big_win.webp",  label: "Big win",  fn: "gold",   rate: 1 },
+  { at: 40,  art: "win/mega_win.webp", label: "Mega win", fn: "pink",   rate: 1.12 },
+  { at: 100, art: "win/epic_win.webp", label: "Epic win", fn: "violet", rate: 1.25 },
 ];
+const TW_HEADS = [...WIN_TIERS.map(t => [t.art, t.label, t.fn]), ["win/total_win.webp", "Total win", "gold"]];
 const OVER_BOARD_AT = 10;   // a spin has to pay more than this many times the bet for the screen
-for (const t of [...WIN_TIERS.map(t => t.art), "win/total_win.webp"]) { const i = new Image(); i.src = "assets/" + t; }
 
 function totalWinScreen(amount, { total = true } = {}) {
   return new Promise(resolve => {
@@ -231,8 +222,7 @@ function totalWinScreen(amount, { total = true } = {}) {
       `<i class="twflash" aria-hidden="true"></i>` +
       `<div class="twin">` +
         `<div class="twhead blank">` +
-          [...WIN_TIERS.map(t => t.art), "win/total_win.webp"].map(art =>
-            `<img class="twlogo" data-art="${art}" src="assets/${art}" alt="" draggable="false">`).join("") +
+          TW_HEADS.map(([art, label, fn]) => fnHTML(T(label), `${fn} shine twlogo`, `data-art="${art}" aria-hidden="true"`)).join("") +
           `<i class="twsheen" aria-hidden="true"></i>` +
         `</div>` +
         `<div class="twamount"><div class="twfig">${numeralRow(fmt(0))}</div></div>` +
@@ -290,7 +280,7 @@ function totalWinScreen(amount, { total = true } = {}) {
     const logos = [...wrap.querySelectorAll(".twlogo")];
     for (const l of logos) l.decode && l.decode().catch(() => {});
     const showArt = (art, label) => {
-      for (const l of logos) { const on = l.dataset.art === art; l.classList.toggle("on", on); l.alt = on ? label : ""; }
+      for (const l of logos) { const on = l.dataset.art === art; l.classList.toggle("on", on); l.setAttribute("aria-hidden", on ? "false" : "true"); }
     };
     const head = wrap.querySelector(".twhead");
     const perBet = bet() > 0 ? amount / bet() : 0;

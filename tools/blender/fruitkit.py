@@ -9,9 +9,17 @@ fruit's own colour pattern, a hard specular blob, a light rim, and an inverted-h
 (solidify, flipped normals). Each fruit is a closed mesh; its HALVES are the same mesh bisected in 3D
 with the cut face capped in an INSIDE material (flesh, seeds, rind), so the slice is real geometry.
 
+Lighting (2026-11-17): cel bands come from the warm KEY light only (Shader to RGB of a diffuse lit by the key sun
+and a dim world), softened into a painterly ramp and tinted warm where lit, cool in shadow; a cool FILL from the
+right and a warm wood BOUNCE from below are added analytically from the surface normal (stable however the fruit
+tumbles); contact occlusion; a sharp highlight plus a soft sheen; a warm rim on the edges; a dark-brown outline.
+
 Renders (render step): art/blender/frames/<ID>/<clip>_<NN>.png, transparent, square.
-  whole : a tumble of N frames about a tilted axis (the game picks the frame by its own spin)
-  half  : the left half, cut face toward camera, tumbling the same way
+  whole : a 32-frame tumble about a tilted axis (the game crossfades between frames, so it turns smoothly)
+  wob   : the right half, cut face toward camera, rocking +-28 deg (12 frames; the roll is done in 2D in the game)
+  openR : the right half opening on a slice: from its place in the whole fruit (cut face edge-on) to cut face
+          toward camera (8 frames, eased); frame 0 of openR + openL together is exactly the whole fruit
+  openL : the left half, the same, the other way
 """
 import math
 import os
@@ -27,7 +35,10 @@ except NameError:  # exec()'d in the live session
     ROOT = os.path.join(os.path.expanduser("~"), "Documents", "juicedojo")
 FRAMES = os.path.join(ROOT, "art", "blender", "frames")
 RES = 256
-N_FRAMES = 16
+N_FRAMES = 16          # (the old tumble length)
+N_WHOLE = 32
+N_WOB = 12
+N_OPEN = 8
 SCENE = "Dojo"
 
 
@@ -52,17 +63,18 @@ def scene():
     sc.render.image_settings.color_mode = "RGBA"
     sc.view_settings.view_transform = "Standard"
     sc.view_settings.look = "None"
-    sc.render.filter_size = 1.2
-    try:
-        sc.eevee.taa_render_samples = 16
-    except AttributeError:
-        pass
+    sc.render.filter_size = 1.35
+    for attr, val in (("taa_render_samples", 32), ("use_gtao", True), ("gtao_distance", .6)):
+        try:
+            setattr(sc.eevee, attr, val)
+        except (AttributeError, TypeError):
+            pass
     if not sc.world:
         sc.world = bpy.data.worlds.new("DojoWorld")
     sc.world.use_nodes = True
     bg = next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND")
-    bg.inputs[0].default_value = (0.35, 0.33, 0.32, 1)
-    bg.inputs[1].default_value = 0.6
+    bg.inputs[0].default_value = (0.36, 0.34, 0.33, 1)
+    bg.inputs[1].default_value = 0.3
     cam = bpy.data.objects.get("DojoCam")
     if not cam:
         cam = bpy.data.objects.new("DojoCam", bpy.data.cameras.new("DojoCam"))
@@ -76,7 +88,8 @@ def scene():
     if not key:
         key = bpy.data.objects.new("DojoKey", bpy.data.lights.new("DojoKey", "SUN"))
         sc.collection.objects.link(key)
-    key.data.energy = 4.0
+    key.data.energy = 4.2
+    key.data.color = (1.0, 0.96, 0.9)
     key.data.angle = math.radians(8)
     key.rotation_euler = (math.radians(50), math.radians(-35), math.radians(-30))   # from upper left, front
     return sc
@@ -108,80 +121,130 @@ def outline_mat():
     nt.nodes.clear()
     out = _n(nt, "ShaderNodeOutputMaterial", 300, 0)
     em = _n(nt, "ShaderNodeEmission", 0, 0)
-    em.inputs["Color"].default_value = (0.03, 0.02, 0.025, 1)
+    em.inputs["Color"].default_value = (0.075, 0.035, 0.02, 1)
     nt.links.new(em.outputs[0], out.inputs["Surface"])
     return m
 
 
+# fixed light directions (world space; the camera looks along +Y, so -Y is toward it, +X right, +Z up)
+D_FILL = (0.82, -0.46, -0.18)      # cool fill from the right, a little low
+D_BOUNCE = (0.0, -0.28, -0.96)     # warm bounce off the wood below
+D_RIM = (0.48, 0.62, 0.62)         # rim from behind, top right
+
+
 def toon(name, colour_fn, shade=(0.42, 0.78, 1.06), spec=0.6, rim=0.35, glow=0.0):
-    """colour_fn(nt) -> an output socket giving the surface colour. The light makes 3 flat bands."""
+    """colour_fn(nt) -> the surface colour. shade = (shadow, mid, lit) levels of the key-light ramp."""
     m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     m.use_nodes = True
     nt = m.node_tree
     nt.nodes.clear()
     L = nt.links.new
-    out = _n(nt, "ShaderNodeOutputMaterial", 1400, 0)
+    out = _n(nt, "ShaderNodeOutputMaterial", 2200, 0)
     col = colour_fn(nt)
-    dif = _n(nt, "ShaderNodeBsdfDiffuse", -200, 300)
-    s2r = _n(nt, "ShaderNodeShaderToRGB", 0, 300)
+    inside = name.endswith("_in")                  # a cut face: juicier colour, less of the fill and bounce
+    hs = _n(nt, "ShaderNodeHueSaturation", 0, 900)
+    hs.inputs["Saturation"].default_value = 1.18 if inside else 1.08
+    L(col, hs.inputs["Color"])
+    col = hs.outputs["Color"]
+    amb = .35 if inside else 1.0
+
+    def mix(kind, a, b, x, y, fac=1.0):
+        n = _n(nt, "ShaderNodeMix", x, y)
+        n.data_type = "RGBA"
+        n.blend_type = kind
+        n.inputs[0].default_value = fac
+        for sock, v in ((6, a), (7, b)):
+            if isinstance(v, tuple):
+                n.inputs[sock].default_value = v + (1,) if len(v) == 3 else v
+            else:
+                L(v, n.inputs[sock])
+        return n.outputs[2]
+
+    def ramp(fac, stops, x, y, interp="EASE"):
+        r = _n(nt, "ShaderNodeValToRGB", x, y)
+        r.color_ramp.interpolation = interp
+        for i, (pos, c) in enumerate(stops):
+            e = r.color_ramp.elements[i] if i < 2 else r.color_ramp.elements.new(pos)
+            e.position = pos
+            e.color = (c,) * 3 + (1,) if isinstance(c, (int, float)) else tuple(c) + (1,)
+        L(fac, r.inputs[0])
+        return r.outputs[0]
+
+    geo = _n(nt, "ShaderNodeNewGeometry", -900, -700)
+
+    def lambert(direction, x, y, power=1.0):
+        d = _n(nt, "ShaderNodeVectorMath", x, y)
+        d.operation = "DOT_PRODUCT"
+        d.inputs[1].default_value = direction
+        L(geo.outputs["Normal"], d.inputs[0])
+        mx = _n(nt, "ShaderNodeMath", x + 180, y)
+        mx.operation = "MAXIMUM"
+        mx.inputs[1].default_value = 0.0
+        L(d.outputs["Value"], mx.inputs[0])
+        if power == 1.0:
+            return mx.outputs[0]
+        pw = _n(nt, "ShaderNodeMath", x + 340, y)
+        pw.operation = "POWER"
+        pw.inputs[1].default_value = power
+        L(mx.outputs[0], pw.inputs[0])
+        return pw.outputs[0]
+
+    # key light -> soft painterly bands
+    dif = _n(nt, "ShaderNodeBsdfDiffuse", -600, 400)
+    s2r = _n(nt, "ShaderNodeShaderToRGB", -420, 400)
     L(dif.outputs[0], s2r.inputs[0])
-    bw = _n(nt, "ShaderNodeRGBToBW", 180, 300)
+    bw = _n(nt, "ShaderNodeRGBToBW", -260, 400)
     L(s2r.outputs[0], bw.inputs[0])
-    ramp = _n(nt, "ShaderNodeValToRGB", 340, 300)
-    cr = ramp.color_ramp
-    cr.interpolation = "EASE"          # flat bands with a short soft edge between them
-    stops = [(0.0, shade[0]), (0.16, shade[0]), (0.24, shade[1]), (0.52, shade[1]), (0.58, shade[2])]
-    for i, (p, v) in enumerate(stops):
-        e = cr.elements[i] if i < 2 else cr.elements.new(p)
-        e.position = p
-        e.color = (v,) * 3 + (1,)
-    L(bw.outputs[0], ramp.inputs[0])
-    mul = _n(nt, "ShaderNodeMix", 640, 200)
-    mul.data_type = "RGBA"
-    mul.blend_type = "MULTIPLY"
-    mul.inputs[0].default_value = 1.0
-    L(col, mul.inputs[6])
-    L(ramp.outputs[0], mul.inputs[7])
-    last = mul.outputs[2]
-    # hard specular blob
+    sh, md, lt = shade
+    band = ramp(bw.outputs[0], [(0.0, sh * .82), (0.1, sh), (0.3, md), (0.6, md * 1.03), (0.78, lt)], -60, 400)
+    # warm where the key falls, cool in its shadow
+    tint = ramp(bw.outputs[0], [(0.0, (0.80, 0.86, 1.06)), (0.35, (0.97, 0.97, 1.0)), (0.85, (1.07, 1.0, 0.9))], -60, 650, "LINEAR")
+    key = mix("MULTIPLY", band, tint, 200, 500)
+    # cool fill from the right, warm bounce from below - straight from the normal, so they never flicker
+    fill = mix("MULTIPLY", (0.62, 0.74, 1.0), ramp(lambert(D_FILL, -600, 0, 1.3), [(0.0, 0.0), (1.0, 1.0)], -100, 0, "LINEAR"), 200, 200)
+    fill = mix("MULTIPLY", fill, (0.30 * amb,) * 3, 380, 200)
+    bounce = mix("MULTIPLY", (1.0, 0.70, 0.42), ramp(lambert(D_BOUNCE, -600, -250), [(0.0, 0.0), (1.0, 1.0)], -100, -250, "LINEAR"), 200, -100)
+    bounce = mix("MULTIPLY", bounce, (0.22 * amb,) * 3, 380, -100)
+    light = mix("ADD", key, fill, 560, 400)
+    light = mix("ADD", light, bounce, 740, 400)
+    lit = mix("MULTIPLY", col, light, 920, 300)
+    # contact occlusion: creases (crowns, stems, leaves, grape bunches) sit in a little shade
+    try:
+        ao = _n(nt, "ShaderNodeAmbientOcclusion", 560, 700)
+        ao.inputs["Distance"].default_value = 0.35
+        ao_f = ramp(ao.outputs["AO"], [(0.0, 0.62), (1.0, 1.0)], 740, 700, "LINEAR")
+        lit = mix("MULTIPLY", lit, ao_f, 1100, 300)
+    except Exception:
+        pass
+    last = lit
     if spec > 0:
-        gl = _n(nt, "ShaderNodeBsdfGlossy", -200, -100)
-        gl.inputs["Roughness"].default_value = 0.25
-        s2 = _n(nt, "ShaderNodeShaderToRGB", 0, -100)
+        # a sharp highlight ...
+        gl = _n(nt, "ShaderNodeBsdfGlossy", -600, -500)
+        gl.inputs["Roughness"].default_value = 0.2
+        s2 = _n(nt, "ShaderNodeShaderToRGB", -420, -500)
         L(gl.outputs[0], s2.inputs[0])
-        bw2 = _n(nt, "ShaderNodeRGBToBW", 180, -100)
+        bw2 = _n(nt, "ShaderNodeRGBToBW", -260, -500)
         L(s2.outputs[0], bw2.inputs[0])
-        r2 = _n(nt, "ShaderNodeValToRGB", 340, -100)
-        r2.color_ramp.interpolation = "CONSTANT"
-        r2.color_ramp.elements[0].color = (0, 0, 0, 1)
-        r2.color_ramp.elements[1].position = 0.55
-        r2.color_ramp.elements[1].color = (spec,) * 3 + (1,)
-        L(bw2.outputs[0], r2.inputs[0])
-        add = _n(nt, "ShaderNodeMix", 900, 100)
-        add.data_type = "RGBA"
-        add.blend_type = "SCREEN"
-        add.inputs[0].default_value = 1.0
-        L(last, add.inputs[6])
-        L(r2.outputs[0], add.inputs[7])
-        last = add.outputs[2]
-    # rim light (facing ratio), a thin bright band on the silhouette's lit side
+        hl = ramp(bw2.outputs[0], [(0.0, 0.0), (0.5, 0.0), (0.58, spec)], -60, -500)
+        last = mix("SCREEN", last, hl, 1280, 200)
+        # ... and a soft wide sheen, so the skin reads glossy all over the lit side
+        gs = _n(nt, "ShaderNodeBsdfGlossy", -600, -800)
+        gs.inputs["Roughness"].default_value = 0.5
+        s3 = _n(nt, "ShaderNodeShaderToRGB", -420, -800)
+        L(gs.outputs[0], s3.inputs[0])
+        bw3 = _n(nt, "ShaderNodeRGBToBW", -260, -800)
+        L(s3.outputs[0], bw3.inputs[0])
+        sheen = ramp(bw3.outputs[0], [(0.0, 0.0), (0.25, 0.0), (0.9, spec * .32)], -60, -800, "LINEAR")
+        last = mix("ADD", last, sheen, 1440, 200)
     if rim > 0:
-        lw = _n(nt, "ShaderNodeLayerWeight", 340, -350)
-        lw.inputs["Blend"].default_value = 0.35
-        r3 = _n(nt, "ShaderNodeValToRGB", 520, -350)
-        r3.color_ramp.interpolation = "CONSTANT"
-        r3.color_ramp.elements[0].color = (0, 0, 0, 1)
-        r3.color_ramp.elements[1].position = 0.6
-        r3.color_ramp.elements[1].color = (rim,) * 3 + (1,)
-        L(lw.outputs["Facing"], r3.inputs[0])
-        add2 = _n(nt, "ShaderNodeMix", 1100, 0)
-        add2.data_type = "RGBA"
-        add2.blend_type = "ADD"
-        add2.inputs[0].default_value = 1.0
-        L(last, add2.inputs[6])
-        L(r3.outputs[0], add2.inputs[7])
-        last = add2.outputs[2]
-    em = _n(nt, "ShaderNodeEmission", 1250, 0)
+        lw = _n(nt, "ShaderNodeLayerWeight", -600, -1100)
+        lw.inputs["Blend"].default_value = 0.3
+        edge = ramp(lw.outputs["Facing"], [(0.0, 0.0), (0.5, 0.0), (0.78, 1.0)], -260, -1100)
+        side = ramp(lambert(D_RIM, -600, -1350), [(0.0, 0.25), (1.0, 1.0)], -260, -1350, "LINEAR")
+        r = mix("MULTIPLY", edge, side, 0, -1200)
+        r = mix("MULTIPLY", r, (1.0 * rim, 0.94 * rim, 0.82 * rim), 180, -1200)
+        last = mix("ADD", last, r, 1600, 200)
+    em = _n(nt, "ShaderNodeEmission", 2000, 0)
     em.inputs["Strength"].default_value = 1.0 + glow
     L(last, em.inputs["Color"])
     L(em.outputs[0], out.inputs["Surface"])
@@ -285,7 +348,7 @@ def add_mat(ob, m):
     return len(ob.data.materials) - 1
 
 
-def outline(ob, width=0.05):
+def outline(ob, width=0.042):
     """Inverted hull: a solidified shell, normals flipped, outline material on the back faces."""
     idx = add_mat(ob, outline_mat())
     mod = ob.modifiers.new("outline", "SOLIDIFY")
@@ -393,8 +456,10 @@ def build(ID):
     normalize(ob, 1.2)
     half = None
     if ID not in NO_HALF:
-        half = make_half(ob, -1)
-        half.hide_render = half.hide_viewport = True
+        half = make_half(ob, -1)                       # keeps x > 0: the RIGHT half, its cut face toward -X
+        other = make_half(ob, +1)                      # keeps x < 0: the LEFT half, its cut face toward +X
+        for h in (half, other):
+            h.hide_render = h.hide_viewport = True
     outline(ob)
     return ob, half
 
@@ -407,29 +472,39 @@ def tumble(ob, i, n, tilt=25):
     ob.rotation_quaternion = Matrix.Rotation(a, 4, axis).to_quaternion()
 
 
-def render(ID, clips=("whole", "half"), n=N_FRAMES):
+def _ease(t):
+    return 1 - (1 - t) ** 3
+
+
+def render(ID, clips=("whole", "wob", "openR", "openL")):
     sc = scene()
     ob = bpy.data.objects[ID]
-    half = bpy.data.objects.get(ID + "_halfL")
+    hr = bpy.data.objects.get(ID + "_halfL")           # make_half(ob, -1): the right half (x > 0)
+    hl = bpy.data.objects.get(ID + "_halfR")           # make_half(ob, +1): the left half (x < 0)
     out = os.path.join(FRAMES, ID)
     os.makedirs(out, exist_ok=True)
+    for f in os.listdir(out):                          # a clean set (old 16-frame clips would be packed too)
+        if f.endswith(".png"):
+            os.remove(os.path.join(out, f))
+    plan = {"whole": (ob, N_WHOLE), "wob": (hr, N_WOB), "openR": (hr, N_OPEN), "openL": (hl, N_OPEN)}
     for clip in clips:
-        tgt = ob if clip == "whole" else half
+        tgt, n = plan[clip]
         if tgt is None:
             continue
-        for o in (ob, half):
+        for o in (ob, hr, hl):
             if o:
                 o.hide_render = o is not tgt
+        tgt.rotation_mode = "QUATERNION"
         for i in range(n):
             if clip == "whole":
                 tumble(tgt, i, n)
-            else:
-                # cut face (-X side... the kept half faces +X after the cut on side -1) toward camera
-                base = Matrix.Rotation(math.radians(90), 4, "Z")      # cut normal +X -> -Y (camera)
-                spin = Matrix.Rotation(2 * math.pi * i / n, 4, "Y")    # roll in the picture plane
-                wob = Matrix.Rotation(math.radians(28) * math.sin(2 * math.pi * i / n), 4, "Z")
-                tgt.rotation_mode = "QUATERNION"
-                tgt.rotation_quaternion = (spin @ wob @ base).to_quaternion()
+            elif clip == "wob":     # cut face to camera (+90 about Z), rocking
+                a = math.radians(90) + math.radians(28) * math.sin(2 * math.pi * i / n)
+                tgt.rotation_quaternion = Matrix.Rotation(a, 4, "Z").to_quaternion()
+            else:                   # opening: from its place in the whole fruit to cut face toward camera
+                k = _ease(i / (n - 1))
+                a = math.radians(90 if clip == "openR" else -90) * k
+                tgt.rotation_quaternion = Matrix.Rotation(a, 4, "Z").to_quaternion()
             sc.render.filepath = os.path.join(out, f"{clip}_{i:02d}.png")
             bpy.ops.render.render(write_still=True, scene=sc.name)
     print("rendered", ID, clips)
@@ -480,14 +555,63 @@ def gallery(ids=ALL, per_row=5):
     sc.camera.data.ortho_scale = 5.5 * per_row
     sc.render.resolution_x = 320 * per_row
     sc.render.resolution_y = int(320 * rows * 2.7 / 5.5)
+    for o in bpy.data.objects:                       # the second halves made by build-style calls stay hidden
+        if o.get("fruitkit") and o.name.endswith("_halfR"):
+            o.hide_render = True
+
+
+def track(ID="BOMB"):
+    """Where the bomb's fuse spark is in every frame of the whole tumble, for the game's live spark FX:
+    art/blender/frames/<ID>/track.json = {"fuse": [[u, v, vis], ...]} - u, v the spark's centre in the tile
+    (0..1, y down), vis 0 when the bomb's body is in front of it. pack_sprites.py copies it into meta.json."""
+    import json
+    sc = scene()
+    ob = bpy.data.objects[ID]
+    me = ob.data
+    mats = [m.name if m else "" for m in me.materials]
+    def centre(pred):
+        vs = {v for p in me.polygons if pred(mats[p.material_index]) for v in p.vertices}
+        return sum((me.vertices[v].co for v in vs), Vector()) / len(vs), vs
+    spark, _ = centre(lambda n: n.startswith("fk_spark"))
+    body, bv = centre(lambda n: n.startswith("fk_BOMB_skin"))
+    br = max((me.vertices[v].co - body).length for v in bv)
+    ortho = sc.camera.data.ortho_scale
+    out = []
+    for i in range(N_WHOLE):
+        tumble(ob, i, N_WHOLE)
+        bpy.context.view_layer.update()
+        M = ob.matrix_world
+        w, b = M @ spark, M @ body
+        d = math.hypot(w.x - b.x, w.z - b.z)
+        front = b.y - math.sqrt(max(0.0, br * br - d * d))   # the body's near surface on the spark's line of sight
+        vis = 1.0 if d >= br * 0.98 or w.y < front else 0.0  # (the camera looks along +Y: smaller y is nearer)
+        out.append([round(w.x / ortho + 0.5, 4), round(0.5 - w.z / ortho, 4), vis])
+    path = os.path.join(FRAMES, ID, "track.json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as fh:
+        json.dump({"fuse": out}, fh)
+    print("track ->", path, sum(1 for o in out if o[2]), "of", len(out), "visible")
+
+
+def gallery_render(path=None, ids=ALL):
+    gallery(ids)
+    sc = bpy.context.scene
+    sc.render.filepath = path or os.path.join(ROOT, "art", "blender", "gallery.png")
+    bpy.ops.render.render(write_still=True, scene=sc.name)
+    print("gallery ->", sc.render.filepath)
 
 
 if __name__ == "__main__" and "--" in sys.argv:  # headless
     args = sys.argv[sys.argv.index("--") + 1:]
     ids = ALL if not args or args[0] == "all" else args[0].split(",")
     steps = args[1].split(",") if len(args) > 1 else ["build", "render"]
+    if "gallery" in steps:
+        gallery_render(ids=ids)
+        ids = []
     for I in ids:
         if "build" in steps:
             build(I)
         if "render" in steps:
             render(I)
+        if "track" in steps:
+            track(I)

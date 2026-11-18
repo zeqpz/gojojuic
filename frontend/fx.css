@@ -1,0 +1,33 @@
+/* Juice Dojo room light (with fxkit.js, which draws the bokeh, dust and particles on the fx canvas):
+   warm shafts of light falling across the wall from the top left, breathing slowly; and in the frenzy, a glow
+   pulsing up the screen's edges - gold and orange, or magenta and violet in the Xtreme frenzy. */
+#bg::before {
+  content: ""; position: absolute; inset: -10% -25%; pointer-events: none;
+  background:
+    linear-gradient(112deg, transparent 16%, rgba(255, 214, 150, .11) 22%, rgba(255, 214, 150, .04) 27%, transparent 31%),
+    linear-gradient(112deg, transparent 36%, rgba(255, 200, 130, .08) 41%, transparent 48%),
+    linear-gradient(112deg, transparent 57%, rgba(255, 222, 165, .07) 61%, transparent 67%);
+  -webkit-mask-image: linear-gradient(#000 0%, rgba(0, 0, 0, .55) 55%, transparent 95%);
+  mask-image: linear-gradient(#000 0%, rgba(0, 0, 0, .55) 55%, transparent 95%);
+  mix-blend-mode: screen; animation: shafts 12s ease-in-out infinite alternate;
+}
+/* the juice stains soak into the wood: their canvas multiplies with it, so the grain shows through */
+#stain { mix-blend-mode: multiply; }
+@keyframes shafts { from { opacity: .55; translate: -1.5% 0; } to { opacity: 1; translate: 1.5% 0; } }
+
+#edgefx {
+  position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: 0; transition: opacity .9s; mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse 20% 62% at 0% 52%, rgba(255, 150, 40, .34), transparent 72%),
+    radial-gradient(ellipse 20% 62% at 100% 52%, rgba(255, 150, 40, .34), transparent 72%),
+    radial-gradient(ellipse 75% 16% at 50% 100%, rgba(255, 110, 20, .26), transparent 72%);
+}
+body.frenzy #edgefx { opacity: 1; animation: edgePulse 2.8s ease-in-out infinite; }
+body.frenzy.xf #edgefx {
+  background:
+    radial-gradient(ellipse 20% 62% at 0% 52%, rgba(200, 60, 255, .36), transparent 72%),
+    radial-gradient(ellipse 20% 62% at 100% 52%, rgba(255, 40, 140, .36), transparent 72%),
+    radial-gradient(ellipse 75% 16% at 50% 100%, rgba(255, 50, 90, .28), transparent 72%);
+}
+@keyframes edgePulse { 0%, 100% { opacity: .72; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #bg::before, body.frenzy #edgefx { animation: none; } }

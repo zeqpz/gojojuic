@@ -1,0 +1,80 @@
+/* Fruit Ninja's lettering: the typeface "Gang of Three" by Vic Fieger (2007, distributed as 100% free;
+   assets/fonts/GangOfThree.ttf, embedding flag "editable"). Every word and figure the game letters - win headlines,
+   win figures, the frenzy intro, the Bonus button, MULTI on the wall, BOOM!, banners - is live text built by
+   fnHTML() (game.js) as three stacked layers of the same text:
+     .fo  the dark outline: a thick stroke with a drop edge under it and a soft shadow
+     .ff  the fill: a vertical gradient clipped to the letters
+     .fs  a sheen band clipped to the letters (animated with .shine)
+   Colours come from the variant class: gold (figures), red (BOOM, frenzy), pink (mega, xtreme), violet (epic),
+   white (painted on the wall). */
+@font-face {
+  font-family: "Gang of Three";
+  src: url("assets/fonts/GangOfThree.ttf") format("truetype");
+  font-display: block;
+}
+.fnt {
+  --fn-ink: #3b0e03;
+  --fn-deep: #220600;
+  --fn-fill: linear-gradient(#fff4b0 0%, #ffd23a 30%, #ff9d14 66%, #ff6a0a 100%);
+  position: relative; display: inline-grid; vertical-align: bottom;
+  font-family: "Gang of Three", "Fredoka", sans-serif; font-weight: 400; font-style: normal;
+  line-height: 1.04; letter-spacing: .02em; white-space: nowrap; text-transform: uppercase;
+  -webkit-text-stroke: 0; text-shadow: none; color: inherit;
+}
+/* (each layer positioned: the outline's filter makes it a stacking context, which would otherwise paint over the fill) */
+.fnt > span { grid-area: 1 / 1; padding: .06em .12em .1em; position: relative; }
+.fnt .fo {
+  color: var(--fn-ink); -webkit-text-stroke: .16em var(--fn-ink); paint-order: stroke fill;
+  filter: drop-shadow(0 .065em 0 var(--fn-deep)) drop-shadow(0 .13em .12em rgba(0, 0, 0, .45));
+}
+.fnt .ff {
+  color: transparent; background: var(--fn-fill);
+  -webkit-background-clip: text; background-clip: text;
+}
+.fnt .fs {
+  color: transparent; opacity: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .92) 50%, transparent 62%) 140% 0 / 260% 100% no-repeat;
+  -webkit-background-clip: text; background-clip: text;
+}
+.fnt.shine .fs { opacity: 1; animation: fnSheen 3.2s ease-in-out infinite; }
+@keyframes fnSheen { 0%, 55% { background-position: 140% 0; } 100% { background-position: -40% 0; } }
+@media (prefers-reduced-motion: reduce) { .fnt.shine .fs { animation: none; opacity: 0; } }
+
+.fnt.gold   { --fn-fill: linear-gradient(#fff4b0 0%, #ffd23a 30%, #ff9d14 66%, #ff6a0a 100%); }
+.fnt.red    { --fn-fill: linear-gradient(#ffe39a 0%, #ffa42e 26%, #ff5414 62%, #c4160a 100%); --fn-ink: #3a0703; }
+.fnt.pink   { --fn-fill: linear-gradient(#ffe6f2 0%, #ff8cc4 30%, #f02a78 66%, #a80c48 100%); --fn-ink: #36041a; --fn-deep: #1c0010; }
+.fnt.violet { --fn-fill: linear-gradient(#f2e6ff 0%, #c79dff 30%, #8a4cf0 66%, #4d18b0 100%); --fn-ink: #1a0838; --fn-deep: #0c0020; }
+.fnt.white  { --fn-fill: linear-gradient(#ffffff 0%, #fbf7f0 55%, #ddd5ca 100%); --fn-ink: #2a1608; --fn-deep: #160a02; }
+
+/* ---- where it is used ---- */
+.fnt.num { letter-spacing: 0; }
+/* win screen: headline and figure */
+.totalwin .twlogo.fnt { display: grid; width: auto; height: auto; max-width: none; justify-self: center; align-self: center;
+  font-size: calc(var(--lw) * .19); }
+.totalwin .twfig .fnt { font-size: clamp(56px, min(15vh, 13vw), 168px); }
+.totalwin .twsheen { display: none; }
+/* frenzy intro */
+.bonusintro .blogo { width: auto !important; height: auto !important; }
+.bonusintro .blogo .fnt { font-size: clamp(30px, min(9.5vh, 8.4vw), 104px); }
+.bonusintro .byou .fnt { font-size: clamp(24px, min(6.4vh, 6vw), 70px); }
+.bonusintro .bfs .fnt { font-size: clamp(28px, min(7.6vh, 7vw), 84px); }
+.bonusintro .bnum .fnt { font-size: clamp(76px, min(17vh, 20vw), 186px); }
+/* banners (BOOM!, ALL 50 WAVES!, GOLD MELON) and their line under */
+.banner .t1:has(.fnt) { background: none; -webkit-text-stroke: 0; -webkit-text-fill-color: initial; filter: none; color: inherit; }
+.banner .t1 .fnt { font-size: clamp(54px, min(12vw, 17vh), 150px); }
+.banner .t2 { font-family: "Gang of Three", "Fredoka", sans-serif; font-weight: 400; letter-spacing: .03em; text-transform: uppercase;
+  -webkit-text-stroke: .14em #1a0b04; paint-order: stroke fill; text-shadow: 0 .09em 0 #1a0b04, 0 0 14px rgba(0, 0, 0, .6); }
+/* win amounts flying into the HUD */
+.winpop { font-family: "Gang of Three", "Fredoka", sans-serif; font-weight: 400; letter-spacing: .02em;
+  -webkit-text-stroke: .16em #1a0b04 !important; paint-order: stroke fill; }
+/* the multiplier painted on the wall */
+.wcol .wlbl { display: flex; justify-content: center; width: auto; }
+.wcol .wlbl .fnt { font-size: clamp(32px, 6.6vh, 72px); }
+.wnum .fnt { font-size: clamp(50px, 11vh, 116px); }
+/* the Bonus button: the word itself (the lettering image is retired), with the warm pulse and the sheen */
+.bonusbtn::after, .bonusbtn .bshine { display: none; }
+.bonusbtn .bword { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none;
+  font-size: calc(50px * var(--hs, 1)); animation: bpulse 2.4s ease-in-out infinite; }
+.bonusbtn:disabled .bword { animation: none; filter: grayscale(.4) brightness(.8) drop-shadow(0 3px 5px rgba(0, 0, 0, .5)); }
+.bonusbtn:disabled .bword .fs { display: none; }
+@media (prefers-reduced-motion: reduce) { .bonusbtn .bword { animation: none; } }

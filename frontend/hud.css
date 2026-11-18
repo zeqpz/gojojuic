@@ -239,7 +239,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .hudstat.win .lbl { color: #ffcf3a; }
 
 /* ---- the Bonus button (owner, 2026-11-13): no plate or outline - the BONUS lettering alone, bigger, with its own
-   life: a warm pulse, a shine sweeping across the letters, crackling lightning and sparkles (bonusFx in game.js) ---- */
+   life: a warm pulse, a shine sweeping across the letters, twinkling sparkles (bonusFx in game.js; no lightning) ---- */
 .bonusbtn::before { display: none; }
 .bonusbtn::after { inset: -14% -16%; animation: bpulse 2.4s ease-in-out infinite; }
 @keyframes bpulse {
