@@ -258,3 +258,39 @@ button:disabled { opacity: 0.45; cursor: default; }
 .bonusbtn:disabled .bshine, .bonusbtn:disabled .bfx { display: none; }
 @media (prefers-reduced-motion: reduce) { .bonusbtn::after, .bonusbtn .bshine { animation: none; } }
 .bonusbtn { width: calc(190px * var(--hs, 1)); height: calc(96px * var(--hs, 1)); }
+
+/* ---- the three HUD figures (owner, 2026-11-18): Balance / Win / Bet get three equal columns that never move, and
+   the three amounts always share one size - --valk, set by fitHud() in game.js, shrinks all three together just
+   enough that the longest amount fits inside its own column. The labels above them keep their size. ---- */
+.hudbar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hudbar > .hudstat:first-child, .hudbar > .hudbet, .hudstat.win { justify-self: stretch; min-width: 0; }
+.hudstat.win { padding: 0 calc(14px * var(--hs, 1)); }
+.hudbet { min-width: 0; }
+.hudbet .hudstat.bet { flex: 1 1 0; min-width: 0; }
+.betstep { flex: none; }
+.hudstat .val, #balance, #betVal, #balance.long, #betVal.long, #balance.vlong, #betVal.vlong, #roundWin {
+  display: block; width: max-content; max-width: 100%; font-size: calc(34px * var(--hs, 1) * var(--valk, 1)); letter-spacing: 0.01em;
+}
+.hudbar > .chip.juris { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); white-space: nowrap; }
+
+/* ---- lag pass (owner, 2026-11-18): the Bonus button no longer animates a filter or a background position (both
+   repaint every frame). The lettering keeps one fixed glow; the pulse is a soft gradient behind it whose opacity
+   breathes, and the shine is a gradient sliding by transform inside the lettering's mask - compositor-only. ---- */
+.bonusbtn::after { animation: none; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .5)) drop-shadow(0 0 7px rgba(255, 195, 65, .55)); }
+.bonusbtn::before {
+  display: block !important; content: ""; position: absolute; inset: -8% -4%; z-index: 0; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 205, 80, .6), rgba(255, 170, 40, .2) 60%, rgba(255, 150, 30, 0)) !important;
+  border: 0 !important; border-image: none !important; box-shadow: none !important; filter: none !important;
+  -webkit-mask: none !important; mask: none !important; transform: none; opacity: .25; will-change: opacity;
+  animation: bglowp 2.4s ease-in-out infinite !important;
+}
+@keyframes bglowp { 50% { opacity: 1; } }
+.bonusbtn:disabled::before { display: none !important; }
+.bonusbtn .bshine { background: none; animation: none; overflow: hidden; }
+.bonusbtn .bshine::before {
+  content: ""; position: absolute; inset: 0; will-change: transform;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .9) 50%, transparent 60%);
+  transform: translateX(-120%); animation: bshine2 3.4s ease-in-out infinite;
+}
+@keyframes bshine2 { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@media (prefers-reduced-motion: reduce) { .bonusbtn::before, .bonusbtn .bshine::before { animation: none !important; } }

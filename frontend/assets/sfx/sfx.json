@@ -184,5 +184,217 @@
    "sfx/swoosh_4.ogg"
   ],
   "vol": 0.5
+ },
+ "heartbeat": {
+  "files": [
+   "sfx/heartbeat_1.ogg"
+  ],
+  "vol": 0.9
+ },
+ "riser": {
+  "files": [
+   "sfx/riser_1.ogg",
+   "sfx/riser_2.ogg"
+  ],
+  "vol": 0.6
+ },
+ "slowmo_in": {
+  "files": [
+   "sfx/slowmo_in_1.ogg",
+   "sfx/slowmo_in_2.ogg"
+  ],
+  "vol": 0.7
+ },
+ "slowmo_out": {
+  "files": [
+   "sfx/slowmo_out_1.ogg",
+   "sfx/slowmo_out_2.ogg"
+  ],
+  "vol": 0.55
+ },
+ "taiko": {
+  "files": [
+   "sfx/taiko_1.ogg",
+   "sfx/taiko_2.ogg"
+  ],
+  "vol": 0.9
+ },
+ "gong": {
+  "files": [
+   "sfx/gong_1.ogg",
+   "sfx/gong_2.ogg"
+  ],
+  "vol": 0.7
+ },
+ "star_ping": {
+  "files": [
+   "sfx/star_ping_1.ogg",
+   "sfx/star_ping_2.ogg"
+  ],
+  "vol": 0.6
+ },
+ "cam_whoosh": {
+  "files": [
+   "sfx/cam_whoosh_1.ogg",
+   "sfx/cam_whoosh_2.ogg"
+  ],
+  "vol": 0.35
+ },
+ "sword_draw": {
+  "files": [
+   "sfx/sword_draw_1.ogg",
+   "sfx/sword_draw_2.ogg"
+  ],
+  "vol": 0.45
+ },
+ "clack": {
+  "files": [
+   "sfx/clack_1.ogg",
+   "sfx/clack_2.ogg"
+  ],
+  "vol": 0.5
+ },
+ "ui_click": {
+  "files": [
+   "sfx/ui_click_1.ogg",
+   "sfx/ui_click_2.ogg"
+  ],
+  "vol": 0.35
+ },
+ "impact": {
+  "files": [
+   "sfx/impact_1.ogg",
+   "sfx/impact_2.ogg"
+  ],
+  "vol": 0.8
+ },
+ "introWhoosh": {
+  "files": [
+   "sfx/intro/sfx_intro_whoosh_1.ogg",
+   "sfx/intro/sfx_intro_whoosh_2.ogg",
+   "sfx/intro/sfx_intro_whoosh_3.ogg"
+  ],
+  "vol": 0.45
+ },
+ "introHit": {
+  "files": [
+   "sfx/intro/sfx_intro_hit_1.ogg",
+   "sfx/intro/sfx_intro_hit_2.ogg"
+  ],
+  "vol": 0.7
+ },
+ "introShimmer": {
+  "files": [
+   "sfx/intro/sfx_intro_shimmer_1.ogg",
+   "sfx/intro/sfx_intro_shimmer_2.ogg",
+   "sfx/intro/sfx_intro_shimmer_3.ogg"
+  ],
+  "vol": 0.42
+ },
+ "introOut": {
+  "files": [
+   "sfx/intro/sfx_intro_out_1.ogg",
+   "sfx/intro/sfx_intro_out_2.ogg"
+  ],
+  "vol": 0.45
+ },
+ "landBrick": {
+  "files": [
+   "sfx/intro/sfx_land_brick_1.ogg",
+   "sfx/intro/sfx_land_brick_2.ogg",
+   "sfx/intro/sfx_land_brick_3.ogg"
+  ],
+  "vol": 0.34
+ },
+ "uiClick": {
+  "files": [
+   "sfx/hud/ui_click_1.ogg",
+   "sfx/hud/ui_click_2.ogg",
+   "sfx/hud/ui_click_3.ogg"
+  ],
+  "vol": 0.42
+ },
+ "uiHover": {
+  "files": [
+   "sfx/hud/ui_hover_1.ogg",
+   "sfx/hud/ui_hover_2.ogg"
+  ],
+  "vol": 0.22
+ },
+ "menuOpen": {
+  "files": [
+   "sfx/hud/menu_open.ogg"
+  ],
+  "vol": 0.5
+ },
+ "menuClose": {
+  "files": [
+   "sfx/hud/menu_close.ogg"
+  ],
+  "vol": 0.5
+ },
+ "swishIn": {
+  "files": [
+   "sfx/hud/swish_in_1.ogg",
+   "sfx/hud/swish_in_2.ogg"
+  ],
+  "vol": 0.38
+ },
+ "swishOut": {
+  "files": [
+   "sfx/hud/swish_out_1.ogg",
+   "sfx/hud/swish_out_2.ogg"
+  ],
+  "vol": 0.35
+ },
+ "capPop": {
+  "files": [
+   "sfx/hud/cap_pop_1.ogg",
+   "sfx/hud/cap_pop_2.ogg"
+  ],
+  "vol": 0.45
+ },
+ "buyConfirm": {
+  "files": [
+   "sfx/hud/buy_confirm_1.ogg"
+  ],
+  "vol": 0.6
+ },
+ "toggle": {
+  "files": [
+   "sfx/hud/toggle.ogg"
+  ],
+  "vol": 0.5
+ },
+ "hoverLoop": {
+  "files": [
+   "sfx/hud/hover_loop.ogg"
+  ],
+  "vol": 0.3
+ },
+ "sliderTick": {
+  "files": [
+   "sfx/hud/slider_tick_1.ogg",
+   "sfx/hud/slider_tick_2.ogg"
+  ],
+  "vol": 0.28
+ },
+ "autoStart": {
+  "files": [
+   "sfx/hud/auto_start.ogg"
+  ],
+  "vol": 0.55
+ },
+ "autoStop": {
+  "files": [
+   "sfx/hud/auto_stop.ogg"
+  ],
+  "vol": 0.55
+ },
+ "bet": {
+  "files": [
+   "sfx/hud/bet.ogg"
+  ],
+  "vol": 0.5
  }
 }

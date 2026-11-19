@@ -1,0 +1,163 @@
+/* ---- the game information panel (#infoWrap), 2026-11-18 ----
+   Built the way orleans builds its rules panel (HUD v3): it rises out of the bar and stands just over the
+   HUD's top edge; a frosted panel in the HUD's paint with the dark outline; one centred spaced-caps title;
+   every topic in a quiet outlined box under a small spaced-caps label; the headline figures as three tiles;
+   the paytable one card per fruit; the specials as icon rows with hairlines between; the modes and the
+   controls as tables with rounded rows; the legal text last, outside any box; Close an outlined pill.
+   Orleans' grey-violet paint warmed to the dojo's: dark lacquered wood, orange-gold accents (--hud-* in
+   hud.css). Every rule is scoped to #infoWrap, so the replay and error panels keep their own look. */
+
+#infoWrap {
+  align-items: flex-end;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px calc(var(--hud-h, 150px) + 12px);
+}
+#infoWrap .infopanel {
+  --ink: #fff4e2; --ink-soft: #d8bf9c; --label: #eec48c; --accent: #ffb21f; --gold: #ffcf3a;
+  --line: rgba(255, 214, 160, .14); --tint: rgba(255, 232, 196, .04);
+  width: min(780px, 100%);
+  max-height: calc(100vh - var(--hud-h, 150px) - 44px);
+  max-height: calc(100dvh - var(--hud-h, 150px) - 44px);
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding: 22px 22px 18px;
+  background: rgba(38, 20, 10, .8);
+  border: 2px solid var(--hud-line); border-radius: 22px;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .45);
+  font-family: var(--hud-font); font-weight: 400; color: var(--ink); letter-spacing: .005em;
+  transform-origin: 50% 100%;
+  scrollbar-width: thin; scrollbar-color: rgba(238, 196, 140, .35) transparent;
+}
+#infoWrap .infopanel::-webkit-scrollbar { width: 10px; }
+#infoWrap .infopanel::-webkit-scrollbar-thumb { background: rgba(238, 196, 140, .32); border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
+
+#infoWrap h3 {
+  margin: 2px 0 16px; text-align: center;
+  font-family: var(--hud-font); font-weight: 700; font-size: 24px; line-height: 1.2; letter-spacing: .14em; text-transform: uppercase; color: #fff;
+}
+
+/* each topic: a quiet outlined box under a small spaced-caps label */
+#infoWrap section {
+  margin: 0 0 14px; padding: 14px 16px 12px;
+  background: var(--tint); border: 1.5px solid var(--hud-line); border-radius: 16px;
+}
+#infoWrap section > h4 {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin: 0 0 10px;
+  font-family: var(--hud-font); font-weight: 600; font-size: 13px; line-height: 1.3; letter-spacing: .16em; text-transform: uppercase; color: var(--label);
+}
+#infoWrap .h4note { font-weight: 500; font-size: 12px; letter-spacing: .02em; text-transform: none; color: var(--ink-soft); }
+#infoWrap p { margin: 0 0 10px; font-size: 14.5px; line-height: 1.6; }
+#infoWrap section > p:last-child { margin-bottom: 0; }
+#infoWrap b { font-weight: 700; }
+#infoWrap p b { color: var(--accent); }
+#infoWrap p.fine { font-size: 13px; line-height: 1.55; color: var(--ink-soft); }
+#infoWrap p.fine b { color: var(--ink); }
+#infoWrap p.legal { margin: 4px 6px 14px; font-size: 12px; line-height: 1.55; color: var(--ink-soft); }
+
+/* the headline figures: three outlined tiles */
+#infoWrap .kvgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+#infoWrap .kvgrid > div { padding: 10px 12px; text-align: center; border: 1.5px solid var(--hud-line); border-radius: 14px; background: var(--tint); }
+#infoWrap .kvgrid span { display: block; font-weight: 600; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+#infoWrap .kvgrid b { display: block; margin: 2px 0; font-size: 26px; line-height: 1.15; color: #fff; font-variant-numeric: tabular-nums; }
+#infoWrap .kvgrid small { display: block; font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
+
+/* the fruit, drawn from the game's own sheets (RULES.paint) */
+#infoWrap .ricon { display: block; width: 56px; height: 56px; }
+
+/* the paytable: a card per fruit, its two pays as a small ledger - how many, the multiple, the amount */
+#infoWrap .paytable { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+#infoWrap .prow {
+  display: grid; grid-template-columns: 56px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; row-gap: 4px; align-items: center;
+  padding: 10px 12px; border: 1.5px solid var(--hud-line); border-radius: 14px; background: var(--tint);
+}
+#infoWrap .prow .ricon { grid-row: 1 / 3; }
+#infoWrap .pname { align-self: end; font-weight: 700; font-size: 16px; line-height: 1.2; color: #fff; }
+#infoWrap .pvals { align-self: start; margin: 0; display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 10px; row-gap: 1px; font-size: 13.5px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+#infoWrap .pvals > div { display: contents; }
+#infoWrap .pvals dt { font-weight: 600; color: var(--label); }
+#infoWrap .pvals dd { margin: 0; color: var(--ink); white-space: nowrap; }
+#infoWrap .pvals dd:last-child { text-align: right; }
+#infoWrap .pvals em { font-style: normal; font-weight: 600; color: var(--gold); }
+
+/* the ten lines, drawn on the 4 x 4 board */
+#infoWrap .linesvg { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; justify-items: center; }
+#infoWrap .linesvg svg { display: block; width: 100%; max-width: 46px; height: auto; }
+#infoWrap .linesvg .ld circle { fill: rgba(255, 238, 210, .34); }
+#infoWrap .linesvg polyline { fill: none; stroke: var(--gold); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+#infoWrap .linesvg .le { fill: #ff7a12; }
+
+/* the frenzy's pieces: an icon and its rule, hairlines between */
+#infoWrap .srow { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 14px; align-items: center; padding: 9px 0; }
+#infoWrap .srow + .srow { border-top: 1px solid var(--line); }
+#infoWrap .srow:first-of-type { padding-top: 2px; }
+#infoWrap .srow:last-child { padding-bottom: 2px; }
+#infoWrap .srow .ricon { width: 48px; height: 48px; }
+#infoWrap .srow p { margin: 0; }
+
+/* tables: rounded rows */
+#infoWrap table { width: 100%; border-collapse: separate; border-spacing: 0 5px; margin: -5px 0; font-family: var(--hud-font); }
+#infoWrap th {
+  padding: 2px 12px; text-align: left; border: 0;
+  font-weight: 600; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft);
+}
+#infoWrap td {
+  padding: 9px 12px; vertical-align: top; text-align: left; font-size: 14px; line-height: 1.45; color: var(--ink);
+  background: var(--tint); border: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+#infoWrap td:first-child { border-left: 1px solid var(--line); border-radius: 12px 0 0 12px; }
+#infoWrap td:last-child { border-right: 1px solid var(--line); border-radius: 0 12px 12px 0; }
+#infoWrap td b { color: #fff; }
+#infoWrap td em { display: block; margin-top: 2px; font-style: normal; font-weight: 600; color: var(--gold); font-variant-numeric: tabular-nums; }
+#infoWrap table.modes td:first-child { width: 20%; }
+#infoWrap table.modes td:nth-child(2) { width: 22%; color: var(--ink-soft); }
+#infoWrap table.modes td:last-child::first-letter { text-transform: uppercase; }   /* the shared rule sentences start in lower case */
+#infoWrap table.guide td:first-child { width: 20%; white-space: nowrap; }
+
+/* Close: a plain outlined pill */
+#infoWrap #infoClose {
+  display: block; margin: 8px auto 2px; min-width: 170px; padding: 13px 30px;
+  border: 2px solid var(--hud-line); border-radius: 999px; background: rgba(255, 240, 220, .08);
+  font-family: var(--hud-font); font-weight: 700; font-size: 15px; line-height: 1; letter-spacing: .16em; text-transform: uppercase; color: #fff;
+  cursor: pointer; transition: background-color .15s, border-color .15s, transform .12s;
+}
+#infoWrap #infoClose:hover { background: rgba(255, 240, 220, .15); border-color: var(--hud-hi); filter: none; }
+#infoWrap #infoClose:active { transform: scale(.96); }
+#infoWrap #infoClose:focus-visible { outline: 2px solid var(--hud-hi); outline-offset: 3px; }
+
+/* phones */
+@media (max-width: 640px) {
+  #infoWrap { padding-left: 10px; padding-right: 10px; }
+  #infoWrap .infopanel { padding: 16px 12px 14px; border-radius: 18px; }
+  #infoWrap h3 { font-size: 20px; margin-bottom: 12px; }
+  #infoWrap section { padding: 12px 12px 10px; border-radius: 14px; margin-bottom: 10px; }
+  #infoWrap p { font-size: 14px; }
+  #infoWrap .kvgrid { gap: 6px; }
+  #infoWrap .kvgrid > div { padding: 8px 4px; border-radius: 12px; }
+  #infoWrap .kvgrid span { font-size: 10px; letter-spacing: .1em; }
+  #infoWrap .kvgrid b { font-size: 19px; }
+  #infoWrap .kvgrid small { font-size: 11px; }
+  #infoWrap .paytable { gap: 8px; }
+  #infoWrap .prow { grid-template-columns: 36px minmax(0, 1fr); column-gap: 6px; row-gap: 6px; padding: 8px 8px 8px 9px; border-radius: 12px; }
+  #infoWrap .prow .ricon { grid-row: 1; width: 36px; height: 36px; }
+  #infoWrap .pname { align-self: center; font-size: 14px; letter-spacing: 0; }
+  #infoWrap .pvals { grid-column: 1 / -1; column-gap: 6px; font-size: 12.5px; }
+  #infoWrap .linesvg { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 10px; }
+  #infoWrap .srow { grid-template-columns: 40px minmax(0, 1fr); column-gap: 10px; }
+  #infoWrap .srow .ricon { width: 40px; height: 40px; }
+  /* the modes table stacks: name and price on one line, what it does under them */
+  #infoWrap table.modes { border-spacing: 0; margin: 0; }
+  #infoWrap table.modes thead { display: none; }
+  #infoWrap table.modes tbody { display: block; }
+  #infoWrap table.modes tr {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; margin: 0 0 6px; padding: 9px 12px;
+    background: var(--tint); border: 1px solid var(--line); border-radius: 12px;
+  }
+  #infoWrap table.modes tr:last-child { margin-bottom: 0; }
+  #infoWrap table.modes td { display: block; width: auto !important; padding: 0; background: none; border: 0; border-radius: 0; }
+  #infoWrap table.modes td:first-child { white-space: nowrap; }
+  #infoWrap table.modes td:nth-child(2) { text-align: right; font-size: 12.5px; }
+  #infoWrap table.modes td:last-child { grid-column: 1 / -1; margin-top: 6px; }
+  #infoWrap table.guide td { padding: 8px 10px; font-size: 13.5px; }
+  #infoWrap table.guide td:first-child { width: 1%; }
+}
+@media (prefers-reduced-motion: reduce) { #infoWrap #infoClose { transition: none; } }

@@ -12,7 +12,7 @@ button { font-family: inherit; cursor: pointer; }
 button:disabled { opacity: 0.45; cursor: default; }
 .bonusintro { position: fixed; inset: 0px; z-index: 55; background: rgb(0, 0, 0); opacity: 0; transition: opacity 0.48s; cursor: pointer; user-select: none; }
 .bonusintro.black { opacity: 1; }
-.bonusintro .wall { position: absolute; inset: 0px; background: url("assets/bg.webp") center center / cover no-repeat rgb(43, 43, 43); opacity: 0; transition: opacity 0.65s; }
+.bonusintro .wall { position: absolute; inset: 0px; background: url("assets/scene/wall.webp") center center / cover no-repeat rgb(43, 43, 43); opacity: 0; transition: opacity 0.65s; }
 .bonusintro .wall::after { content: ""; position: absolute; inset: 0px; background: rgba(0, 0, 0, 0.4); }
 .bonusintro .inner { position: absolute; inset: 0px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3vh 8vw; text-align: center; opacity: 0; translate: 0px 16px; transition: opacity 0.65s 0.2s, translate 0.65s 0.2s; --mx: 0; --my: 0; transform: perspective(1400px) rotateX(calc(var(--my) * -7deg)) rotateY(calc(var(--mx) * 7deg)); }
 .bonusintro.up .wall, .bonusintro.up .inner { opacity: 1; }
@@ -252,3 +252,13 @@ html .bonusintro .bhow, html.sprayfx .bonusintro .bhow {
 .bonusintro .bhow, .bonusintro .bhow p { color: #4a2a12; text-shadow: none; }
 .bonusintro .bhow b, .bonusintro .bhow strong { color: #b33a08; }
 .bonusintro .bhow p:first-child strong { color: #7a2a06; letter-spacing: .06em; }
+/* readable parchment (owner, 2026-11-18): no black outline on the dark ink (orleans' 3-4px text-stroke made it a
+   blur), bigger type, plain dark-brown body and deep-red highlights */
+.bonusintro .bhow, .bonusintro .bhow p, .bonusintro .bhow b, .bonusintro .bhow strong { -webkit-text-stroke: 0; paint-order: normal; text-shadow: none; }
+.bonusintro .bhow { font-size: clamp(16px, 2.5vh, 23px); font-weight: 600; line-height: 1.45; color: #2b1606; }
+.bonusintro .bhow p { color: #2b1606; }
+.bonusintro .bhow b { color: #a3200a; font-weight: 700; letter-spacing: .02em; font-size: 1.05em; }
+.bonusintro .bhow p:first-child strong { color: #5e1c02; font-size: 1.15em; letter-spacing: .08em; text-transform: uppercase; }
+/* the bonus intro over the casino hall too (owner, 2026-11-18: the 2000s fruit-machine scene) */
+.bonusintro .wall { background-image: url("assets/scene/casino.webp"); }
+@media (orientation: portrait) { .bonusintro .wall { background-image: url("assets/scene/casino_tall.webp"); } }
