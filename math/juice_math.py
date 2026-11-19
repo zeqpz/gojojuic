@@ -3,11 +3,12 @@
 BASE GAME: one spin is one WAVE - a 4x4 board of fruit falls through the dojo, the blade slashes the
 10 lines (4 rows, 4 columns, 2 diagonals) and every line with 3 or 4 of the same fruit in a row from
 EITHER end pays (the higher of the two ends). There are no bombs in the base game. 3+ golden star fruit
-in the wave start FRUIT FRENZY (4 star fruit start its multiplier at x2, 5+ at x3).
+in the wave start FRUIT FRENZY.
 
 FRUIT FRENZY: up to 50 faster waves. Every wave may carry a BOMB: the chance starts low and rises a
 little every wave; a bomb wave explodes, pays nothing and ends the frenzy (everything already won is
-kept). Multiplier peaches (x2/x3/x5/x10) ADD into one frenzy multiplier for every later win; frost
+kept). Multiplier peaches (x2/x3/x5/x10) fall in the waves: the peaches in a wave add up and multiply
+THAT wave's line wins only (no line, no effect; nothing carries over - owner, 2026-11-18); frost
 grapes knock the bomb chance back to its starting value; side fruit flies in each wave for small pays.
 Clear all 50 waves and the giant Gold Melon is slashed 6-30 times for the finale.
 
@@ -37,28 +38,30 @@ PAY = {
 SIDE_PAY = {"H1": 20, "H2": 16, "H3": 12, "H4": 10, "L1": 6, "L2": 5, "L3": 4, "L4": 4}
 
 W_BASE = {"H1": 5, "H2": 6, "H3": 7, "H4": 8, "L1": 12, "L2": 13, "L3": 14, "L4": 15}
-W_FRENZY = {"H1": 6, "H2": 7, "H3": 8, "H4": 9, "L1": 12, "L2": 13, "L3": 14, "L4": 15}
+# the frenzy is richer: high fruit more common, lemon and kiwi rare, so more waves carry lines for the peaches
+W_FRENZY = {"H1": 10, "H2": 11, "H3": 12, "H4": 13, "L1": 14, "L2": 14, "L3": 3, "L4": 3}
 P_SCATTER = 0.0225           # per cell, base game only
 F_MAX_WAVES = 50              # a frenzy is at most this many waves
-F_BOMB0 = 0.05                # the first frenzy wave's bomb chance ...
-F_BOMB_RAMP = 0.006           # ... rising this much every wave (since the last frost grapes) ...
-F_BOMB_MAX = 0.25             # ... up to this
-P_MULT = 0.20                 # a multiplier peach this wave
-MULT_VALUES = ((2, 55), (3, 28), (5, 13), (10, 4))
+F_BOMB0 = 0.035               # the first frenzy wave's bomb chance ...
+F_BOMB_RAMP = 0.004           # ... rising this much every wave (since the last frost grapes) ...
+F_BOMB_MAX = 0.20             # ... up to this
+P_MULT = 0.64                 # a multiplier peach this wave (it multiplies only that wave's lines)
+P_MULT2 = 0.35                # ... and a second peach with it
+MULT_VALUES = ((2, 30), (3, 30), (5, 25), (10, 15))
 P_FREEZE = 0.07               # frost grapes: the bomb chance drops back to F_BOMB0
 FINALE_HITS = list(range(6, 31))
 FINALE_W = [max(1, 34 - h) for h in FINALE_HITS]
-FINALE_PER_HIT = 25           # 0.25x per hit, times the frenzy multiplier
+FINALE_PER_HIT = 25           # 0.25x per hit
 MAX_WIN = 500000              # 5,000x
 BUY_COST = 77.0
 
-# XTREME FRENZY (bought only): starts at x3, peaches drop more often and are x3 or more,
-# and the bomb chance climbs more slowly.
-X_START_MULT = 3
-X_P_MULT = 0.30
-X_MULT_VALUES = ((3, 60), (5, 30), (10, 10))
-X_BOMB0 = 0.04
-X_BOMB_RAMP = 0.005
+# XTREME FRENZY (bought only): peaches in almost every wave (often two), always x3 or more,
+# and the bomb chance starts lower and climbs more slowly.
+X_P_MULT = 0.95
+X_P_MULT2 = 0.65
+X_MULT_VALUES = ((3, 30), (5, 35), (10, 35))
+X_BOMB0 = 0.018
+X_BOMB_RAMP = 0.0015
 X_COST = 265.0
 
 # BONUS BOOST: every spin costs 1.25x the bet and lands Fruit Frenzy 1.6x as often (star fruit a
@@ -139,18 +142,21 @@ class Round:
         return amount
 
 
-NORMAL = {"p_mult": None, "values": None, "bomb0": None, "ramp": None, "xtreme": False}
-XTREME = {"p_mult": X_P_MULT, "values": X_MULT_VALUES, "bomb0": X_BOMB0, "ramp": X_BOMB_RAMP, "xtreme": True}
+NORMAL = {"p_mult": None, "p_mult2": None, "values": None, "bomb0": None, "ramp": None, "xtreme": False}
+XTREME = {"p_mult": X_P_MULT, "p_mult2": X_P_MULT2, "values": X_MULT_VALUES, "bomb0": X_BOMB0, "ramp": X_BOMB_RAMP, "xtreme": True}
 
 
-def frenzy(rng, R, start_mult=1, prof=NORMAL):
+def frenzy(rng, R, prof=NORMAL):
+    """Multipliers are per wave (owner, 2026-11-18): the peaches that fall in a wave add up into that wave's
+    multiplier, which multiplies that wave's line wins only - if the wave has no line, the peaches pay
+    nothing. Nothing carries over to the next wave; side fruit and the finale are not multiplied."""
     p_mult = prof["p_mult"] or P_MULT
     values = prof["values"] or MULT_VALUES
     bomb0 = prof["bomb0"] or F_BOMB0
     ramp = prof["ramp"] or F_BOMB_RAMP
-    R.ev({"type": "frenzyStart", "maxWaves": F_MAX_WAVES, "mult": start_mult, "bombChance": bomb0,
+    R.ev({"type": "frenzyStart", "maxWaves": F_MAX_WAVES, "mult": 1, "bombChance": bomb0,
           "xtreme": prof["xtreme"]})
-    mult, won, reason, since = start_mult, 0, "clear", 0
+    won, reason, since = 0, "clear", 0
     for i in range(F_MAX_WAVES):
         if R.total >= MAX_WIN:
             reason = "max"
@@ -164,42 +170,47 @@ def frenzy(rng, R, start_mult=1, prof=NORMAL):
         base = {"type": "wave", "frenzy": True, "n": i, "maxWaves": F_MAX_WAVES, "pace": pace,
                 "bombChance": round(p_bomb, 4)}
         if rng.random() < p_bomb:
+            # the bomb falls in the formation in place of one fruit; the wave pays nothing and the frenzy ends
             r, c = free.pop()
             b[r][c] = "BOMB"
             R.ev({**base, "board": b, "bomb": [r, c], "wins": [], "combo": 1, "power": [], "side": [],
-                  "mult": mult, "waveWin": 0, "total": R.total})
+                  "mult": 1, "waveWin": 0, "total": R.total})
             reason = "bomb"
             break
-        power = []
-        if rng.random() < p_mult:
+        power, wmult = [], 0
+        n_peach = (1 + (rng.random() < (prof["p_mult2"] or P_MULT2))) if rng.random() < p_mult else 0
+        for _ in range(n_peach):
             r, c = free.pop()
             v = rng.choices([m for m, _ in values], [w for _, w in values])[0]
             b[r][c] = f"PW{v}"
-            mult = v if mult == 1 else mult + v
+            wmult += v
             power.append({"cell": [r, c], "kind": "mult", "value": v})
+        wmult = max(1, wmult)
         if rng.random() < P_FREEZE:
             r, c = free.pop()
             b[r][c] = "FRZ"
             since = 0
             power.append({"cell": [r, c], "kind": "frost", "bombChance": bomb0})
         wins, combo, raw = wave_eval(b)
+        if not wins:
+            wmult = 1                      # peaches with no line to multiply
         side = []
         for _ in range(2 + rng.randint(0, 3) + i // 8):
             s = pick(rng, T_FRENZY)
-            side.append({"sym": s, "win": SIDE_PAY[s] * mult, "from": rng.choice("LR")})
+            side.append({"sym": s, "win": SIDE_PAY[s], "from": rng.choice("LR")})
         for w in wins:
-            w["win"] *= mult
-        pay = R.add(raw * mult + sum(s["win"] for s in side))
+            w["win"] *= wmult
+        pay = R.add(raw * wmult + sum(s["win"] for s in side))
         won += pay
         R.ev({**base, "board": b, "bomb": None, "wins": wins, "combo": combo, "power": power, "side": side,
-              "mult": mult, "waveWin": pay, "total": R.total})
+              "mult": wmult, "waveWin": pay, "total": R.total})
     if reason == "clear" and R.total < MAX_WIN:
         hits = rng.choices(FINALE_HITS, FINALE_W)[0]
-        pay = R.add(hits * FINALE_PER_HIT * mult)
+        pay = R.add(hits * FINALE_PER_HIT)
         won += pay
-        R.ev({"type": "finale", "hits": hits, "perHit": FINALE_PER_HIT * mult, "mult": mult, "win": pay,
+        R.ev({"type": "finale", "hits": hits, "perHit": FINALE_PER_HIT, "mult": 1, "win": pay,
               "total": R.total})
-    R.ev({"type": "frenzyEnd", "reason": reason, "win": won, "mult": mult, "total": R.total})
+    R.ev({"type": "frenzyEnd", "reason": reason, "win": won, "mult": 1, "total": R.total})
 
 
 def base_round(rng, boost=False):
@@ -211,7 +222,7 @@ def base_round(rng, boost=False):
     R.ev({"type": "wave", "frenzy": False, "n": 0, "pace": 1.0, "board": b, "bomb": None, "wins": wins,
           "combo": combo, "waveWin": pay, "total": R.total, "scatters": sc})
     if len(sc) >= 3:
-        frenzy(rng, R, min(3, len(sc) - 2))
+        frenzy(rng, R)
     R.ev({"type": "finalWin", "amount": R.total})
     return R
 
@@ -225,7 +236,7 @@ def bonus_round(rng):
 
 def xtreme_round(rng):
     R = Round()
-    frenzy(rng, R, X_START_MULT, XTREME)
+    frenzy(rng, R, XTREME)
     R.ev({"type": "finalWin", "amount": R.total})
     return R
 

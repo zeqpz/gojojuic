@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="hud.css">
 <link rel="stylesheet" href="bonus.css">
 <link rel="stylesheet" href="win.css">
+<link rel="stylesheet" href="info.css">
 <style>
   @font-face { font-family: "Fredoka"; src: url("assets/fredoka.ttf") format("truetype"); font-weight: 300 700; font-display: block; }
   :root {
@@ -20,26 +21,45 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #120c0a; color: var(--ink); font-family: var(--disp); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
   button { font-family: inherit; }
 
-  /* ---------- the dojo (owner, 2026-11-18): the cartoon wood wall, no floor - the juice can splash anywhere on
-     it - with paper lanterns hanging from the top (blossom branches removed: owner, 2026-11-18) in front of it, and petals drifting.
-     #bg = the wall (moves with the camera exactly, so the stains stay put on it); #mid = what hangs in front
-     (moves a touch more, for depth). Art: tools/gen_scene.py. */
-  #bg { position: fixed; inset: 0; overflow: hidden; background: #1b120d url("assets/scene/wall.webp") center top / cover no-repeat; }
-  @media (orientation: portrait) { #bg { background-image: url("assets/scene/wall_tall.webp"); } }
+  /* ---------- the scene (owner, 2026-11-18, late): "fit the vibe with the old 2000s fruit feel" - a glossy pre-rendered
+     casino hall: red lacquer, gold dragon pillars, a sunburst, and a beam of marquee bulbs that chase like a fruit
+     machine's (#bulbs, placed on the art's own bulbs by placeBulbs() in game.js). Two silk lanterns hang in front.
+     #bg = the wall (moves with the camera exactly, so the stains stay put on it); #mid = what hangs in front (moves
+     a touch more, for depth). Art: tools/gen_scene.py (CASINO) + tools/pack_casino.py.
+     Lag (owner, 2026-11-18): nothing here animates a filter - the lanterns' glow is a soft gradient whose opacity
+     breathes, the bulbs only fade, so the compositor does it all without repainting. */
+  #bg { position: fixed; inset: 0; overflow: hidden; background: #1a0605 url("assets/scene/casino.webp") center top / cover no-repeat; }
+  @media (orientation: portrait) { #bg { background-image: url("assets/scene/casino_tall.webp"); } }
+  #bulbs { position: absolute; inset: 0; z-index: 1; pointer-events: none; }   /* (over the wall's vignette) */
+  /* each bulb: a dark disk over the painted bulb while it is off, a bright flare while it is on (opacity only) */
+  #bulbs i { position: absolute; translate: -50% -50%; }
+  #bulbs i::before, #bulbs i::after { content: ""; position: absolute; border-radius: 50%; will-change: opacity;
+                                      animation: 1.32s steps(1, end) infinite; animation-delay: inherit; }
+  #bulbs i::before { inset: 29%; background: radial-gradient(circle, rgba(40, 12, 3, .74) 0 46%, rgba(40, 12, 3, .4) 60%, rgba(40, 12, 3, 0) 74%); animation-name: bulbOff; }
+  #bulbs i::after { inset: 0; opacity: 0; animation-name: bulbOn;
+                    background: radial-gradient(circle, #ffffff 0 9%, rgba(255, 244, 200, .95) 14%, rgba(255, 214, 110, .6) 26%, rgba(255, 170, 40, .22) 48%, rgba(255, 140, 20, 0) 70%); }
+  @keyframes bulbOn { 0% { opacity: 1; } 34% { opacity: 0; } }
+  @keyframes bulbOff { 0% { opacity: 0; } 34% { opacity: 1; } }
+  body.winning #bulbs i::before, body.winning #bulbs i::after { animation-duration: .44s; }
+  body.frenzy #bulbs i::before, body.frenzy #bulbs i::after { animation-duration: .66s; }
   #mid { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
   #mid .sc { position: absolute; pointer-events: none; will-change: rotate; }
-  #mid .lantern { top: -2vh; height: min(24vh, 17vw); transform-origin: 50% 0; translate: -50% 0;
-                  filter: drop-shadow(0 0 2.6vh rgba(255, 150, 60, .55)); animation: swayL 4.6s ease-in-out infinite alternate, glowL 3.1s ease-in-out infinite alternate; }
-  #mid .lantern.l { left: 21%; }
-  #mid .lantern.r { left: 79%; animation-duration: 5.2s, 2.7s; animation-delay: -1.7s, -.9s; }
-  #petals { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #mid .lantern { top: -1.5vh; height: min(22vh, 15vw); aspect-ratio: 300 / 520; transform-origin: 50% 0; translate: -50% 0;
+                  animation: swayL 4.6s ease-in-out infinite alternate; }
+  #mid .lantern img { position: relative; display: block; height: 100%; width: auto; }
+  #mid .lantern i { position: absolute; left: -60%; right: -60%; top: 10%; height: 70%; border-radius: 50%; will-change: opacity;
+                    background: radial-gradient(closest-side, rgba(255, 150, 50, .55), rgba(255, 110, 30, .2) 55%, rgba(255, 90, 20, 0));
+                    animation: glowL 3.1s ease-in-out infinite alternate; }
+  #mid .lantern.l { left: 24%; }
+  #mid .lantern.r { left: 76%; animation-duration: 5.2s; animation-delay: -1.7s; }
+  #mid .lantern.r i { animation-duration: 2.7s; animation-delay: -.9s; }
   @media (orientation: portrait) {
-    #mid .lantern { height: 10vh; top: -1vh; }
-    #mid .lantern.l { left: 12%; } #mid .lantern.r { left: 88%; }
+    #mid .lantern { height: 9vh; top: 3.5vh; }
+    #mid .lantern.l { left: 14%; } #mid .lantern.r { left: 86%; }
   }
   @keyframes swayL { from { rotate: -3.2deg; } to { rotate: 3.2deg; } }
-  @keyframes glowL { from { filter: drop-shadow(0 0 2vh rgba(255, 150, 60, .4)) brightness(1); } to { filter: drop-shadow(0 0 3.4vh rgba(255, 170, 70, .7)) brightness(1.12); } }
-  @media (prefers-reduced-motion: reduce) { #mid .sc { animation: none; } }
+  @keyframes glowL { from { opacity: .55; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { #mid .sc, #mid .lantern i, #bulbs i::before, #bulbs i::after { animation: none; } #bulbs i::before { opacity: 0; } }
   #bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 42%, transparent 38%, rgba(10, 5, 3, .5) 100%); transition: background .8s; }
   body.frenzy #bg::after { background: radial-gradient(ellipse at 50% 42%, rgba(255, 140, 20, .12) 20%, rgba(70, 10, 0, .6) 100%); }
   canvas.layer { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
@@ -109,12 +129,7 @@
   .infopanel .fine, .infopanel p.legal { font-size: 11.5px; color: var(--ink-soft); }
   .infopanel table { border-collapse: collapse; width: 100%; font-size: 13px; }
   .infopanel td, .infopanel th { padding: 5px 8px; border-bottom: 1px solid rgba(255, 255, 255, .08); text-align: left; }
-  .paytable { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .paytable .pt { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 12px; background: rgba(255, 255, 255, .05); font-family: var(--disp); }
-  .paytable canvas { width: 56px; height: 56px; flex: none; }
-  .paytable .pv { font-size: 13px; line-height: 1.5; } .paytable .pv b { color: var(--gold); }
-  .linesvg { display: flex; flex-wrap: wrap; gap: 8px; }
-  .linesvg svg { width: 52px; height: 52px; background: rgba(255, 255, 255, .05); border-radius: 8px; }
+  /* (the game information panel's own look - paytable, lines, tables, Close - is in info.css, scoped to #infoWrap) */
   .infoclose, .shopbtn {
     display: inline-block; margin-top: 8px; padding: 12px 26px; cursor: pointer; border: 3px solid #000; border-radius: 14px;
     font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: .1em; text-transform: uppercase; color: #15131a; background: var(--hud-on);
@@ -269,10 +284,9 @@
 <link rel="stylesheet" href="fx.css">
 </head>
 <body>
-<div id="bg"></div>
-<div id="mid">
-  <img class="sc lantern l" src="assets/scene/lantern.webp" alt=""><img class="sc lantern r" src="assets/scene/lantern.webp" alt="">
-  <canvas id="petals"></canvas>
+<div id="bg"><div id="bulbs" aria-hidden="true"></div></div>
+<div id="mid" aria-hidden="true">
+  <span class="sc lantern l"><i></i><img src="assets/scene/lantern2.webp" alt=""></span><span class="sc lantern r"><i></i><img src="assets/scene/lantern2.webp" alt=""></span>
 </div>
 <canvas id="stain" class="layer"></canvas>
 <div id="board" aria-hidden="true"></div>

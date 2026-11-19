@@ -95,15 +95,26 @@ async function loadArt(progress) {
     }
   } catch (e) { FXMETA = {}; }
   const ids = Object.keys(META.fruit);
+  // phones and tablets take the 3/4-size sheets (assets/fruit/m, 144 px cells): the full set is ~230 MB once
+  // decoded, too much for a phone's GPU memory (lag pass, owner 2026-11-18); a fruit there is drawn ~150 px anyway
+  const phone = /[?&]device=mobile/.test(location.search) || (matchMedia && matchMedia("(pointer: coarse)").matches);
+  const dir = phone ? "assets/fruit/m/" : "assets/fruit/";
+  if (phone) META.cell = Math.round(META.cell * .75);
   let done = 0;
   await Promise.all(ids.map(id => new Promise(res => {
     const img = new Image();
     img.onload = () => { SHEETS[id] = img; done++; progress(done / ids.length); res(); };
     img.onerror = () => { done++; progress(done / ids.length); res(); };
-    img.src = `assets/fruit/${id}.webp`;
+    img.src = dir + `${id}.webp`;
   })));
-  // decode up front so the first throw never hitches on an image upload
+  // decode up front, then draw every sheet (and the FX sprites) once onto the fx canvas so each one is already
+  // uploaded to the GPU before the first wave: a sheet's first draw stalled a frame by 60-150 ms (lag pass)
   await Promise.all(Object.values(SHEETS).map(i => i.decode ? i.decode().catch(() => 0) : 0));
+  try {
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = .01;
+    for (const im of [...Object.values(SHEETS), ...Object.values(FXIMG), ...SPLATS, ...DRIPS]) if (im && (im.complete !== false)) g.drawImage(im, 0, 0, 2, 2);
+    g.restore(); g.clearRect(0, 0, 4, 4);
+  } catch (e) { /* (a sheet that failed to load) */ }
   await font;
   await stains;
 }
@@ -111,7 +122,7 @@ async function loadArt(progress) {
 // radians; "wob" (or true) - a half rocking on its back, t = the rocking phase in radians; "openR" / "openL" - a half
 // opening out of the cut, t = 0..1. Between two frames it crossfades, so even a slow turn never steps.
 const clipOf = c => c === true ? "wob" : (c === false || c == null) ? "whole" : c;
-function drawFruit(ctx, id, clip, t, x, y, size, rot, alpha = 1, flip = false) {
+function drawFruit(ctx, id, clip, t, x, y, size, rot, alpha = 1, flip = false, fade = true) {
   const sid = SPRITE(id), img = SHEETS[sid], m = META && META.fruit[sid];
   if (!img || !m || !m.clips) return;
   const name = clipOf(clip), cl = m.clips[name] || m.clips.whole;
@@ -130,7 +141,7 @@ function drawFruit(ctx, id, clip, t, x, y, size, rot, alpha = 1, flip = false) {
     ctx.drawImage(img, (q % cols) * C, Math.floor(q / cols) * C, C, C, -k / 2, -k / 2, k, k);
   };
   tile(i0, alpha);
-  if (fr > .02 && i1 !== i0) tile(i1, alpha * fr);
+  if (fade && fr > .02 && i1 !== i0) tile(i1, alpha * fr);
   ctx.restore();
 }
 // the soft shadow a fruit throws on the wall, drawn once and stamped
@@ -220,6 +231,35 @@ function camUpdate(rdt) {
 }
 const camApply = ctx => { if (cam.z !== 1) { ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y); } };
 
+/* ---------------------------------------------------------------- marquee bulbs */
+// The casino hall's beam of bulbs chases like an old fruit machine's (owner, 2026-11-18: "the old 2000s fruit
+// feel"): one soft light on each bulb painted in the art (assets/scene/casino.json, found by tools/pack_casino.py),
+// placed through the same cover / centre-top fit as the wall, every third one lit in turn; faster while a win
+// counts up and in the frenzy (CSS). Only their opacity animates, so it costs the compositor nothing to speak of.
+let BULBS = null;
+function placeBulbs() {
+  const box = $("bulbs");
+  if (!box || !BULBS) return;
+  const tall = innerHeight > innerWidth, m = BULBS[tall ? "casino_tall" : "casino"];
+  if (!m) return;
+  const vw = innerWidth, vh = innerHeight, k = Math.max(vw / m.w, vh / m.h), ox = (vw - m.w * k) / 2;
+  if (box.children.length !== m.bulbs.length) {
+    box.innerHTML = "";
+    m.bulbs.forEach((b, i) => { const el = document.createElement("i"); el.style.animationDelay = `${-(i % 3) * .44}s`; box.appendChild(el); });
+  }
+  m.bulbs.forEach(([fx, fy, fr], i) => {
+    const el = box.children[i], d = fr * m.w * k * 10;
+    Object.assign(el.style, { left: `${ox + fx * m.w * k}px`, top: `${fy * m.h * k}px`, width: `${d}px`, height: `${d}px` });
+  });
+}
+fetch("assets/scene/casino.json").then(r => r.json()).then(j => { BULBS = j; placeBulbs(); }).catch(() => {});
+addEventListener("resize", placeBulbs);
+let winLights = 0;
+function bulbsWin(ms = 2200) {               // the chase speeds up while a win comes in
+  document.body.classList.add("winning");
+  clearTimeout(winLights); winLights = setTimeout(() => document.body.classList.remove("winning"), ms);
+}
+
 /* ---------------------------------------------------------------- petals */
 // Cherry blossom petals drifting down the dojo wall (on #petals inside #bg, so the camera carries them).
 // They run on the scene's clock, so a slow-motion close-up slows them too. Cheap: 1x resolution, ~30 petals.
@@ -261,7 +301,6 @@ function frame(now) {
   for (let i = simWaiters.length - 1; i >= 0; i--) if (simClock >= simWaiters[i].t) { simWaiters[i].res(); simWaiters.splice(i, 1); }
   step(dt, rdt);
   camUpdate(rdt);
-  petalsUpdate(rdt * timeScale);
   draw(rdt);
   requestAnimationFrame(frame);
 }
@@ -374,9 +413,9 @@ function step(dt, rdt) {
   FX.update(dt, rdt);
   // juice stains on the wall fade slowly
   stainFade += rdt;
-  if (stainFade > 0.1) {
+  if (stainFade > 0.5) {         // (lag pass, 2026-11-18: one full-canvas pass every half second, same fade rate)
     stainFade = 0;
-    gs.save(); gs.globalCompositeOperation = "destination-out"; gs.fillStyle = "rgba(0,0,0,0.012)"; gs.fillRect(0, 0, W, H); gs.restore();
+    gs.save(); gs.globalCompositeOperation = "destination-out"; gs.fillStyle = "rgba(0,0,0,0.058)"; gs.fillRect(0, 0, W, H); gs.restore();
   }
 }
 let stainFade = 0;
@@ -412,7 +451,10 @@ function collide() {
   }
 }
 
+const MB_N = 2, MB_SHUTTER = .9 / 60;   // motion blur: trailing copies, and how much of a frame they cover
+let mbK = 0;
 function draw() {
+  mbK = MB_SHUTTER * timeScale;
   g.setTransform(DPR, 0, 0, DPR, 0, 0);
   g.clearRect(0, 0, W, H);
   if (shake > 0) g.translate((Math.random() - .5) * 26 * shake, (Math.random() - .5) * 26 * shake);
@@ -449,7 +491,17 @@ function draw() {
     FX.auraBack(g, f);                       // a special fruit's halo, rays, light streak (fxkit.js)
     // the tumble (crossfaded frames), the air's rocking tilt, and the little pop as it comes out of the top
     const pk = f.popAge == null ? 1 : Math.min(1, f.popAge / .16), popS = pk >= 1 ? 1 : .35 + .65 * (1 + 2.2 * Math.pow(pk - 1, 3) + 1.2 * Math.pow(pk - 1, 2));
-    drawFruit(g, f.id, "whole", f.spin, f.x, f.y, f.size * popS, f.rot + (f.wobA ? Math.sin(f.ph) * f.wobA : 0));
+    const frot = f.rot + (f.wobA ? Math.sin(f.ph) * f.wobA : 0);
+    // motion blur (owner, 2026-11-18): faint copies trail the fruit along the distance it covers in one frame's
+    // shutter (less in slow motion), tumble included, so a fast fall smears softly instead of stepping
+    if (f.mode !== "held") {
+      const gx = f.vx * mbK, gy = f.vy * mbK, gsn = (f.vs || 0) * mbK;
+      if (gx * gx + gy * gy > 9) for (let i = MB_N; i >= 1; i--) {
+        const u = i / MB_N;
+        drawFruit(g, f.id, "whole", f.spin - gsn * u, f.x - gx * u, f.y - gy * u, f.size * popS, frot, .3 * (1 - u) + .12, false, false);
+      }
+    }
+    drawFruit(g, f.id, "whole", f.spin, f.x, f.y, f.size * popS, frot);
     FX.auraFront(g, f);                      // its twinkles, crackling arcs, spitting fuse
     if (f.id.startsWith("PW")) badge(g, f.x, f.y + f.size * .05, "x" + f.id.slice(2), f.size * .42);
   }
@@ -784,9 +836,10 @@ function dropBoard(e) {
                   x0: p.x + (Math.random() - .5) * S * .06, y0: -size * .75 - S * .9,
                   vx0: (Math.random() - .5) * 30 * FALL, v0: (115 + Math.random() * 30) * pace * FALL,
                   x: p.x, y: -S * 3, vx: 0, vy: 0,
-                  rot: (Math.random() - .5) * .35, vr: (Math.random() - .5) * 2, spin: Math.random() * 7,
-                  vs: (Math.random() < .5 ? -1 : 1) * (1.5 + Math.random() * 2.5),
-                  ph: Math.random() * 6.3, wobA: (light ? .11 : .055) * (.7 + Math.random() * .6), wobF: 3 + Math.random() * 2,
+                  // a calmer tumble (owner, 2026-11-18: the spin was hard on the eyes): slower turns, less rocking
+                  rot: (Math.random() - .5) * .3, vr: (Math.random() - .5) * 1.1, spin: Math.random() * 7,
+                  vs: (Math.random() < .5 ? -1 : 1) * (.9 + Math.random() * 1.3),
+                  ph: Math.random() * 6.3, wobA: (light ? .07 : .035) * (.7 + Math.random() * .6), wobF: 2.2 + Math.random() * 1.4,
                   size, delay: 0,
                   glow: id === "SC" ? "#ffd84a" : id === "BOMB" ? "#ff3b2b" : id === "FRZ" ? "#c8f0ff" : null };
       if (id.startsWith("PW")) f.glow = { PW2: "#5ab4ff", PW3: "#c56bff", PW5: "#ff6a3a", PW10: "#ffd700" }[id];
@@ -821,7 +874,10 @@ async function playWave(e) {
     SFX.chime(sc.length);
     for (const [r, c] of sc) { const f = fruitAt(fruits, r, c); ring(f.x, f.y, "#ffd84a", S * .3, S * .8, .6, 6); FX.ping(f); }
   }
-  // power fruit first: sliced, and their effect flies to the frenzy panel
+  // power fruit first: sliced, and their effect flies to the frenzy panel. Multiplier peaches are per wave
+  // (owner, 2026-11-18): this wave's peaches add up on the panel and multiply this wave's lines only.
+  let wm = 0;
+  const peachAt = [];
   for (const p of (e.power || [])) {
     const [r, c] = p.cell, f = fruitAt(fruits, r, c);
     const q = { x: f.x, y: f.y };
@@ -832,7 +888,10 @@ async function playWave(e) {
       pop(q.x, q.y, `x${p.value}`, "#bfe4ff", S * .55, 1.1, 70);
       ring(q.x, q.y, "#9ad7ff", S * .2, S * 1.4, .55, 10);
       SFX.power();
+      wm += p.value; peachAt.push(q);
+      const now = wm;
       flyTo(q.x, q.y, $("fsMult"), `x${p.value}`, "#9ad7ff");
+      setTimeout(() => paintMult(now, true), 540 / speed());
     } else {
       pop(q.x, q.y, T("BOMB CHANCE RESET"), "#d8f6ff", S * .3, 1.3, 70);
       SFX.freeze();
@@ -890,6 +949,15 @@ async function playWave(e) {
   if (e.combo > 1) {
     pop(W / 2, GY - S * .05, `${e.wins.length} ${T("LINE COMBO")}  x${e.combo}`, "#ff9a3c", Math.max(26, S * .34), 1.4, 20);
     SFX.combo(e.combo, e.wins.length);
+  }
+  if (wm > 0) {                                       // the peaches either multiplied this wave's lines or fizzled
+    if (e.wins.length) {
+      pop(W / 2, GY + S * .45, `${T("LINES")} x${wm}`, "#9ad7ff", Math.max(28, S * .4), 1.3, 40);
+      ring(W / 2, GY + S * .45, "#9ad7ff", S * .3, S * 2.2, .6, 10);
+    } else {
+      for (const q of peachAt) pop(q.x, q.y + S * .4, T("NO LINE"), "#9aa6b2", Math.max(16, S * .2), .9, 30);
+    }
+    setTimeout(() => paintMult(1), (e.wins.length ? 1300 : 700) / speed());
   }
   // 3+ star fruit: they burst and the frenzy is on (unless the star cinematic already cut them)
   if (sc.length >= 3 && !starsCut) {
@@ -977,10 +1045,38 @@ function sideFruit(e) {
 async function bombWave(e, fruits, blk) {
   const [r, c] = e.bomb, b = fruitAt(fruits, r, c);
   SFX.fuse();
-  for (let i = 0; i < 2; i++) { ring(b.x, b.y, "#ff3b2b", S * .2, S * .9, .35, 7); await sleep(170); }
+  // Cinematic (owner, 2026-11-18): the bomb falls in the formation in place of a fruit; time nearly stops and
+  // the camera glides in on it while the fuse fizzes, its red glow pulsing faster on each heartbeat, the music
+  // drains away to a beat of silence - then the blade catches it and it goes off. Skip plays the short version.
+  const cine = !state.skip;
+  if (cine) {
+    SFX.slowIn(); SFX.music.duck(.3, 700);
+    SFX.music.cue("tension", { on: true });
+    tweenTime(.07, 380);
+    cam.maxZ = 1.85;
+    camFocus([b]);
+    await sleep(620);                                 // the camera settles on the bomb
+    const gaps = [520, 400, 300, 230];
+    for (let i = 0; i < gaps.length; i++) {
+      SFX.heartbeat(i);
+      ring(b.x, b.y, "#ff3b2b", S * .25, S * (1 + i * .25), .7, 8 + i * 2);
+      FX.sparkle(b.x + b.size * .2, b.y - b.size * .45, "#ffb347", 8 + i * 3);
+      shake = Math.min(.4, .06 + i * .08);
+      if (i === 1) SFX.riser();
+      await sleep(gaps[i]);
+    }
+    SFX.music.duck(0, 250); SFX.music.cue("tension", { on: false });
+    await sleep(300);                                 // a beat of silence...
+  } else {
+    for (let i = 0; i < 2; i++) { ring(b.x, b.y, "#ff3b2b", S * .2, S * .9, .35, 7); await sleep(170); }
+  }
   await swipe(b.x - S * 1.4, b.y - S * .3, b.x + S * .1, b.y + S * .05, 140, "#ff8a7a", 16);
   const p = { x: b.x, y: b.y };
   b.gone = true;
+  if (cine) {                                         // ...and back out with the blast
+    cam.maxZ = 1.6; camFocus(null); SFX.slowOut();
+    tweenTime(1, 260);
+  }
   SFX.boom(); SFX.impact(); SFX.music.cue("bomb");
   const fl = $("flash");
   fl.style.transition = "none"; fl.style.opacity = "1";
@@ -1013,6 +1109,7 @@ async function bombWave(e, fruits, blk) {
   blk.released = true;
   timeScale = 1;
   banner(T("BOOM!"), T("The frenzy is over"), "bomb");
+  if (cine) setTimeout(() => SFX.music.duck(1, 1600), 700);
   await sleep(1300);
   hideBanner();
 }
@@ -1039,9 +1136,9 @@ function bonusHow(e) {
   const x = !!e.xtreme;
   return `<p><strong>${T("How the frenzy works")}</strong></p>` +
     `<p>${T("Waves keep falling, faster and faster, for up to")} <b>50</b>. ${T("Every wave may carry a")} <b>${T("bomb")}</b>: ` +
-    `${T("the chance starts at")} <b>${Math.round((e.bombChance || .05) * 100)}%</b> ${T("and rises a little every wave. A bomb ends the frenzy - everything you won is kept.")}</p>` +
-    `<p>${T("Slice")} <b>${T("multiplier peaches")}</b> ${x ? "(x3, x5, x10)" : "(x2, x3, x5, x10)"} ${T("and they add together into one multiplier for every win after. Frost grapes knock the bomb chance back down. Side fruit pays every wave.")}</p>` +
-    `<p>${(e.mult || 1) > 1 ? `${T("Your frenzy starts at")} <b>x${e.mult}</b>. ` : ""}${T("Survive all 50 waves to slice the")} <b>${T("Gold Melon")}</b>.</p>`;
+    `${T("the chance starts at")} <b>${+((e.bombChance || .035) * 100).toFixed(1)}%</b> ${T("and rises a little every wave. A bomb ends the frenzy - everything you won is kept.")}</p>` +
+    `<p><b>${T("Multiplier peaches")}</b> ${x ? "(x3, x5, x10)" : "(x2, x3, x5, x10)"} ${T("fall in with the fruit: if their wave slices a line, the peaches multiply that wave's line wins. Frost grapes knock the bomb chance back down. Side fruit pays every wave.")}</p>` +
+    `<p>${T("Survive all 50 waves to slice the")} <b>${T("Gold Melon")}</b>.</p>`;
 }
 function bonusIntro(e) {
   return new Promise(resolve => {
@@ -1163,9 +1260,16 @@ function setBomb(p, reset = false) {
   el.classList.toggle("cool", reset);
   if (reset) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
 }
+function paintMult(v, bump = false) {
+  const m = $("fsMult");
+  if (!m || m.dataset.v === String(v)) return;
+  m.dataset.v = v;
+  m.innerHTML = numeralRowWhite("x" + v);
+  if (bump) { m.classList.remove("bump"); void m.offsetWidth; m.classList.add("bump"); }
+}
 function setWave(e) {
   if (!e.frenzy) { frostOff(); return; }
-  paintFs(e.n + 1, e.maxWaves || 50, e.mult, e.bombChance || 0);
+  paintFs(e.n + 1, e.maxWaves || 50, 1, e.bombChance || 0);   // the multiplier is this wave's peaches only
 }
 function setCombo(e) {
   if (e.frenzy) {
@@ -1199,6 +1303,7 @@ function addWin(totalHundredths) {
   const target = fromHundredths(totalHundredths);
   const from = shownWin, t0 = performance.now(), dur = 500;
   shownWin = target;
+  if (target > from) bulbsWin();
   const el = $("roundWin");
   $("winStat").classList.toggle("zero", target <= 0);
   const st = () => {
@@ -1294,6 +1399,33 @@ function fitFigure(el, text) {   // orleans: long figures step down a size
   el.classList.toggle("long", text.length > 12 && text.length <= 16);
   el.classList.toggle("vlong", text.length > 16);
 }
+/* Balance / Win / Bet always share one size (owner, 2026-11-18): each sits in an equal, fixed column (hud.css), and
+   --valk on the bar shrinks all three amounts together just enough that the longest fits its own column. Runs on
+   every change of any amount (count-ups included, via MutationObserver, before paint) and on every resize. */
+const HUD_VALS = ["balance", "roundWin", "betVal"];
+function fitHud() {
+  const bar = document.querySelector(".hudbar");
+  if (!bar) return;
+  const cur = parseFloat(bar.style.getPropertyValue("--valk")) || 1;
+  let k = 1;
+  for (const id of HUD_VALS) {
+    const el = $(id), box = el && el.parentElement;
+    if (!box || !el.scrollWidth) continue;
+    const cs = getComputedStyle(box);
+    const room = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const need = el.scrollWidth / cur + 2;          // the width at full size (+2 for the text shadow)
+    if (room > 0 && need > room) k = Math.min(k, room / need);
+  }
+  k = Math.max(.3, Math.floor(k * 1000) / 1000);
+  if (Math.abs(k - cur) > .001) bar.style.setProperty("--valk", k);
+}
+{
+  const mo = new MutationObserver(fitHud);
+  for (const id of HUD_VALS) { const el = $(id); if (el) mo.observe(el, { childList: true, characterData: true, subtree: true }); }
+  const bar = document.querySelector(".hudbar");
+  if (bar && window.ResizeObserver) new ResizeObserver(fitHud).observe(bar);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHud);
+}
 function showBalance(a) {
   const el = $("balance");
   el.textContent = fmt(a);
@@ -1335,12 +1467,13 @@ function fatal(title, msg) {
 $("errorRetry").onclick = () => location.reload();
 
 $("spinBtn").onclick = () => { SFX.unlock(); spin("base"); };
-$("betUp").onclick = () => { if (state.betIdx < state.bets.length - 1) { state.betIdx++; refreshBet(); SFX.tick(); } };
-$("betDown").onclick = () => { if (state.betIdx > 0) { state.betIdx--; refreshBet(); SFX.tick(); } };
+$("betUp").onclick = () => { if (state.betIdx < state.bets.length - 1) { state.betIdx++; refreshBet(); SFX.bet(true); } };
+$("betDown").onclick = () => { if (state.betIdx > 0) { state.betIdx--; refreshBet(); SFX.bet(false); } };
 $("rapidBtn").onclick = () => {
   state.turbo = !state.turbo;
   $("rapidBtn").classList.toggle("on", state.turbo);
   $("rapidBtn").setAttribute("aria-pressed", state.turbo);
+  SFX.toggle();
 };
 document.addEventListener("keydown", e => {
   if (e.code === "Space" && !e.repeat && document.activeElement.tagName !== "BUTTON" && $("bonusWrap").hidden && $("infoWrap").hidden && !document.querySelector(".bonusintro")
@@ -1369,7 +1502,7 @@ function paintAuto() {
 }
 function stopAuto() { state.auto = 0; paintAuto(); }
 $("autoBtn").onclick = () => {
-  if (state.auto > 0) { stopAuto(); return; }
+  if (state.auto > 0) { stopAuto(); SFX.autoStop(); return; }
   $("autoBet").textContent = fmt(bet());
   togglePop("autoPop", $("autoBtn"));
 };
@@ -1377,7 +1510,7 @@ for (const b of document.querySelectorAll("#autoOpts button")) b.onclick = () =>
   state.autoPick = +b.dataset.n;
   for (const o of document.querySelectorAll("#autoOpts button")) { o.classList.toggle("on", o === b); o.setAttribute("aria-pressed", o === b); }
 };
-$("autoYes").onclick = () => { $("autoPop").hidden = true; state.auto = state.autoPick; paintAuto(); if (!state.playing) spin("base"); };
+$("autoYes").onclick = () => { $("autoPop").hidden = true; state.auto = state.autoPick; paintAuto(); SFX.autoStart(); if (!state.playing) spin("base"); };
 
 // volume
 const vol = { sfx: 80, music: 60 };
@@ -1393,14 +1526,53 @@ function paintVol() {
 }
 for (const [k, bar] of [["sfx", "sfxBar"], ["music", "musicBar"]]) {
   const el = $(bar);
-  const set = x => { const r = el.getBoundingClientRect(); vol[k] = Math.round(Math.max(0, Math.min(1, (x - r.left) / r.width)) * 100); paintVol(); try { localStorage.setItem("juicedojo.vol", JSON.stringify(vol)); } catch (e) { /* */ } };
+  const set = x => { const r = el.getBoundingClientRect(), was = vol[k]; vol[k] = Math.round(Math.max(0, Math.min(1, (x - r.left) / r.width)) * 100); paintVol(); if (Math.floor(was / 5) !== Math.floor(vol[k] / 5)) SFX.sliderTick(); try { localStorage.setItem("juicedojo.vol", JSON.stringify(vol)); } catch (e) { /* */ } };
   el.addEventListener("pointerdown", e => { el.setPointerCapture(e.pointerId); el.classList.add("dragging"); set(e.clientX); });
   el.addEventListener("pointermove", e => { if (el.hasPointerCapture(e.pointerId)) set(e.clientX); });
   el.addEventListener("pointerup", () => el.classList.remove("dragging"));
   el.addEventListener("keydown", e => { if (e.key === "ArrowRight" || e.key === "ArrowUp") { vol[k] = Math.min(100, vol[k] + 5); paintVol(); } if (e.key === "ArrowLeft" || e.key === "ArrowDown") { vol[k] = Math.max(0, vol[k] - 5); paintVol(); } });
 }
 $("audioBtn").onclick = () => { SFX.unlock(); togglePop("volPop", $("audioBtn")); };
-document.addEventListener("click", ev => { const b = ev.target.closest && ev.target.closest("button"); if (b && b.id !== "spinBtn") SFX.uiClick(); }, true);
+/* The HUD's sounds, as zeqpz/orleans (owner, 2026-11-18): a tick when a mouse pointer arrives on a button, a click
+   under every press, the menus' open / close swish (watched on the panels themselves, so the button, Escape and a
+   click outside all sound the same), the bonus buy's pop, and a hum while the pointer rests on the Bonus button. */
+{
+  let over = null, lastHover = 0;
+  document.addEventListener("pointerover", ev => {
+    if (ev.pointerType && ev.pointerType !== "mouse") return;
+    const b = ev.target.closest && ev.target.closest("button");
+    if (b === over) return;
+    over = b;
+    if (!b || b.disabled || b.id === "bonusBtn") return;
+    const t = performance.now();
+    if (t - lastHover < 60) return;
+    lastHover = t;
+    SFX.uiHover();
+  });
+  document.addEventListener("pointerdown", ev => {
+    const b = ev.button === 0 && ev.target.closest && ev.target.closest("button");
+    if (b && !b.disabled && b.id !== "spinBtn") SFX.uiClick();
+  }, true);
+  const watch = (id, open, close) => {
+    const el = $(id);
+    if (!el) return;
+    let was = el.hidden;
+    new MutationObserver(() => { if (el.hidden === was) return; was = el.hidden; (was ? close : open)(); })
+      .observe(el, { attributes: true, attributeFilter: ["hidden"] });
+  };
+  watch("infoWrap", () => SFX.menuOpen(), () => SFX.menuClose());
+  watch("bonusWrap", () => { SFX.menuOpen(); SFX.capPop(); }, () => SFX.menuClose());
+  watch("autoPop", () => SFX.menuOpen(), () => SFX.menuClose());
+  watch("volPop", () => SFX.menuOpen(), () => SFX.menuClose());
+  const bb = $("bonusBtn");
+  let stopHum = null;
+  const endHum = () => { if (stopHum) { stopHum(); stopHum = null; } };
+  bb.addEventListener("pointerenter", ev => { if (ev.pointerType && ev.pointerType !== "mouse") return; if (!bb.disabled && !stopHum) stopHum = SFX.hold("hoverLoop"); });
+  bb.addEventListener("pointerleave", endHum);
+  bb.addEventListener("pointerdown", endHum);
+  addEventListener("blur", endHum);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) endHum(); });
+}
 
 // rules
 $("menuBtn").onclick = () => { $("rulesBody").innerHTML = RULES.html({ T, fmt, bet: bet(), cost: modeCost.bonus, xcost: modeCost.extremebonus, boost: modeCost.boost, social: RGS.social }); RULES.paint(SHEETS, META, drawFruit); $("infoWrap").hidden = false; };
@@ -1410,7 +1582,7 @@ $("infoWrap").addEventListener("pointerdown", e => { if (e.target === $("infoWra
 // bonus shop
 // The shop's cards (orleans' format), in order. A mode the RGS does not offer shows no card.
 const BUYS = [
-  { mode: "bonus", key: "frenzy", title: "Fruit Frenzy", desc: "Up to 50 waves until a bomb. Peaches stack one multiplier.", heat: 3, acc: "#F2B230", icon: "assets/bonus/icon_frenzy.webp" },
+  { mode: "bonus", key: "frenzy", title: "Fruit Frenzy", desc: "Up to 50 waves until a bomb. Peaches multiply their wave's lines.", heat: 3, acc: "#F2B230", icon: "assets/bonus/icon_frenzy.webp" },
   { mode: "extremebonus", key: "xfrenzy", title: "Xtreme Frenzy", desc: "Starts at x3. Peaches x3 or more, bombs climb slower.", heat: 5, acc: "#ff5fa2", icon: "assets/bonus/icon_xfrenzy.webp", x: true },
   // Bonus Boost is not a buy: it is switched on, and every base spin after it is a boosted one (spin)
   { mode: "boost", key: "boost", title: "Bonus Boost", desc: "Every spin 1.6x as likely to land Fruit Frenzy.", heat: 2, acc: "#F2B230", toggle: true },
@@ -1457,7 +1629,7 @@ function bshopCard(o) {
 function bshopGet(o) {
   if (o.toggle) {   // Bonus Boost: on or off for the spins that follow
     state.boost = !state.boost;
-    SFX.tick();
+    SFX.toggle();
     refreshBet();
     return;
   }
@@ -1472,6 +1644,7 @@ function bshopGet(o) {
   bshopArmed = null; clearTimeout(bshopArmT);
   closeBonus();
   SFX.unlock();
+  SFX.buyConfirm();
   spin(o.mode);
 }
 function paintBonus() {
@@ -1877,9 +2050,31 @@ const SFX = (() => {
     clack() {      // hyoshigi: two hard wooden modes and a click
       const j = 1 + (Math.random() - .5) * .06;
       tone(1180 * j, .07, .22, "sine", 0, .97); tone(2630 * j, .045, .12, "sine", 0, .97); noise(.025, 5200, 3000, 1.4, .28); },
-    uiClick() {    // a small, soft wooden tick
-      const j = 1 + (Math.random() - .5) * .08;
+    // the HUD's sounds, from zeqpz/orleans (owner, 2026-11-18): click, hover tick, menus, bonus buy, toggles
+    uiClick() {
+      if (sample("uiClick", { jitter: .03 })) return;
+      const j = 1 + (Math.random() - .5) * .08;   // (a small wooden tick until the takes load)
       tone(1650 * j, .028, .07, "sine", 0, .9); noise(.018, 4200, 2600, 1.8, .1); },
+    uiHover() { if (ac && ac.state === "running") sample("uiHover", { jitter: .03 }); },   // a hover never opens the audio
+    menuOpen() { sample("menuOpen", { jitter: .02 }); sample("swishIn", { jitter: .04 }); },
+    menuClose() { sample("menuClose", { jitter: .02 }); sample("swishOut", { jitter: .04 }); },
+    capPop() { sample("capPop", { jitter: .03 }); },
+    buyConfirm() { sample("buyConfirm", { jitter: 0 }); },
+    toggle() { sample("toggle", { jitter: .02 }); },
+    sliderTick() { sample("sliderTick", { jitter: .05 }); },
+    autoStart() { sample("autoStart", { jitter: 0 }); },
+    autoStop() { sample("autoStop", { jitter: 0 }); },
+    bet(up = true) { sample("bet", { rate: up ? 1.06 : .94, jitter: .01 }) || tone(up ? 1200 : 900, .04, .06, "square"); },
+    // a loop that lasts as long as it is held (the Bonus button's hover hum); returns the function that fades it
+    hold(name) {
+      const set = bank[name];
+      if (!ac || ac.state !== "running" || !set || !set.bufs.length || sv <= 0) return () => {};
+      const src = ac.createBufferSource(), gn = ac.createGain(), t = ac.currentTime;
+      src.buffer = set.bufs[0]; src.loop = true;
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(set.vol, t + .12);
+      src.connect(gn); gn.connect(out); src.start(t);
+      return () => { const t2 = ac.currentTime; gn.gain.cancelScheduledValues(t2); gn.gain.setValueAtTime(gn.gain.value, t2); gn.gain.linearRampToValueAtTime(0, t2 + .18); src.stop(t2 + .2); };
+    },
     swoosh() { sample("swoosh", { jitter: .08 }) || noise(.16, 3800, 900, 1.2, .35); },
     throw() { sample("drop", { gain: .8 }) || noise(.35, 300, 900, .8, .12, "lowpass"); },
     squish(id) {
@@ -1927,7 +2122,8 @@ const SFX = (() => {
     return [...jag(x0, y0, mx, my, rough / 2, depth - 1).slice(0, -1), ...jag(mx, my, x1, y1, rough / 2, depth - 1)];
   };
   const tick = now => {
-    const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+    if (now - lastT < 31) { requestAnimationFrame(tick); return; }   // (lag pass: twinkles at 30 fps)
+    const dt = Math.min(.08, (now - lastT) / 1000); lastT = now;
     const dpr = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
     if (!w) { cx.clearRect(0, 0, cv.width, cv.height); requestAnimationFrame(tick); return; }   // (it sparkles on while a spin plays)
     if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
@@ -2135,9 +2331,9 @@ function runFeatures() {
         box("lines", T("Slice the lines"),
             T("Every spin drops a <b>4 x 4</b> wave of fruit. <b>10</b> lines - rows, columns and diagonals - pay <b>both ways</b> for <b>3</b> or <b>4</b> of a kind. Slice <b>3</b> or more lines in one wave for a <b>x2</b> combo, <b>5</b> or more for <b>x3</b>.")) +
         box("frenzy", T("Fruit Frenzy"),
-            T("<b>3</b> or more golden star fruit start up to <b>50</b> faster waves in a row. <b>4</b> star fruit start the multiplier at <b>x2</b>, <b>5</b> or more at <b>x3</b>. Side fruit pays on every wave, and surviving all <b>50</b> slices the <b>Gold Melon</b>.")) +
+            T("<b>3</b> or more golden star fruit start up to <b>50</b> faster waves in a row. Side fruit pays on every wave, and surviving all <b>50</b> slices the <b>Gold Melon</b>.")) +
         box("bomb", T("Peaches & bombs"),
-            T("Multiplier peaches - <b>x2</b> to <b>x10</b> - add up into one frenzy multiplier. Any frenzy wave may carry a bomb: it ends the frenzy, but everything won is kept. Frost grapes knock the bomb chance back to <b>5%</b>.")) +
+            T("Multiplier peaches - <b>x2</b> to <b>x10</b> - multiply the lines of the wave they fall in. A bomb can fall in any frenzy wave in place of a fruit: it ends the frenzy, but everything won is kept. Frost grapes knock the bomb chance back down.")) +
       `</div>` +
       `<div class="fcont"><span class="fhit"><span class="ftxt">${T("Click to play")}</span></span></div>`;
     document.body.appendChild(wrap);

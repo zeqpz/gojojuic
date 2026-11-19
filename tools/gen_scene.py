@@ -111,6 +111,37 @@ FEATURES = {
 }
 JOBS.update(FEATURES)
 
+# the 2000s fruit-machine look (owner, 2026-11-18: "fit the vibe with the old 2000s fruit feel", after the fruit were
+# re-rendered as glossy Golden-Dragon-style CGI): pre-rendered 3D casino-arcade art instead of the flat cartoon wall
+STYLE2K = ("Pre-rendered glossy 3D CGI in the style of a mid-2000s Asian arcade or casino fruit slot machine cabinet: "
+           "rich saturated colours, deep red lacquer and polished gold trim, chrome and gold bevels with bright "
+           "specular glints, soft bloom and glow, little lens sparkles, high contrast, slick and premium. "
+           "No text, no letters, no numbers, no logos, no watermark, no characters, no people, no fruit.")
+CASINO = {
+    "wall2k": ("16:9", False,
+               "The background of a fruit-slicing slot game: a lavish Asian dojo-style casino hall seen straight on. The "
+               "centre two thirds is one big calm, dark, smooth panel of deep crimson-to-black lacquer with a faint "
+               "golden sunburst of rays fanning out from behind the middle and a few tiny drifting gold sparkles - "
+               "uncluttered and darker in the middle so bright glossy fruit pop on it. Framing it on the far left and "
+               "right: thick glossy red lacquered pillars wrapped by coiling golden dragons, with glowing red-and-gold "
+               "paper lanterns behind. Across the top, a polished dark wood and gold beam lined with a row of warm "
+               "glowing marquee light bulbs like a classic fruit machine. No floor visible. " + STYLE2K),
+    "wall2k_tall": ("9:16", False,
+                    "The portrait background of a fruit-slicing slot game on a phone: a lavish Asian casino hall seen "
+                    "straight on. Almost all of it is one big calm, dark, smooth panel of deep crimson-to-black lacquer "
+                    "with a faint golden sunburst of rays fanning out from behind the middle and a few tiny drifting "
+                    "gold sparkles - uncluttered and darker in the middle so bright glossy fruit pop on it. Thin glossy "
+                    "red pillars with golden dragon coils at the very left and right edges; across the top, a polished "
+                    "dark wood and gold beam lined with a row of warm glowing marquee light bulbs like a classic fruit "
+                    "machine. No floor visible. " + STYLE2K),
+    "lantern2k": ("2:3", True,
+                  "One glossy round red Chinese silk lantern hanging from a short gold cord at the top, with polished "
+                  "gold caps at top and bottom, a long red-and-gold tassel underneath, glowing warmly from inside. Plain, "
+                  "no writing or symbols. Seen straight on, centred, the cord reaching the very top edge of the image. "
+                  "Fully transparent background. " + STYLE2K),
+}
+JOBS.update(CASINO)
+
 
 def run(name):
     aspect, transparent, prompt = JOBS[name]
